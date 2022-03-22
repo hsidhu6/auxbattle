@@ -1,3 +1,3 @@
 # AuxBattle
 
-By Pirjot Atwal
+By Pirjot Atwal, Harkamal Padda
