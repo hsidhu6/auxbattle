@@ -1,0 +1,27 @@
+{
+  "name": "auxbattle",
+  "version": "1.0.0",
+  "description": "An online rendition of the popular AuxBattle game, built by a few college friends for fun.",
+  "main": "app.js",
+  "scripts": {
+    "test": "node app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hsidhu6/auxbattle.git"
+  },
+  "keywords": [
+    "AuxBattle",
+    "Game",
+    "Online"
+  ],
+  "author": "Harjyot Sidhu",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hsidhu6/auxbattle/issues"
+  },
+  "homepage": "https://github.com/hsidhu6/auxbattle#readme",
+  "dependencies": {
+    "express": "^4.17.3"
+  }
+}
