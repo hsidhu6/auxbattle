@@ -12,8 +12,12 @@ console.log("Welcome to AuxBattle! Setting up the server...");
 const express = require('express'); // Import the express module
 const app = express(); // Build the app
 
+
+
 app.use(express.static('public')); // By default, serve static files from the public folder
 app.use(express.json()); // Allow JSON GET/POST requests
+
+
 
 
 // Listen on port 3000 (localhost:3000)
