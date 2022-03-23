@@ -1,0 +1,5 @@
+# Ignore the following files and folders
+
+
+# Require the user to import their own modules using 'npm install'
+node_modules
