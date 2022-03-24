@@ -88,7 +88,44 @@
 
         <div style="height: 500px">
             <h1 style="text-align:center"> Content </h1>
-
+            <div id="youtube-player"
+      data-video="LoE3X_KpzTU"
+      data-startseconds="20"
+      data-endseconds="120"
+      data-height="480"
+      data-width="640">
+</div>
+<script src="https://www.youtube.com/iframe_api"></script>
+<script type="text/javascript">
+        let player = null;
+      function onYouTubeIframeAPIReady() {
+        var ctrlq = document.getElementById("youtube-player");
+        player = new YT.Player('youtube-player', {
+          height: ctrlq.dataset.height,
+          width: ctrlq.dataset.width,
+          events: {
+            'onReady': function(e) {
+              e.target.loadVideoById({
+                videoId: ctrlq.dataset.video,
+                startSeconds: ctrlq.dataset.startseconds,
+                endSeconds: ctrlq.dataset.endseconds
+              });
+              
+            }
+          }
+        });
+        console.log(ctrlq.dataset.video, ctrlq.dataset.startseconds, ctrlq.dataset.endseconds)
+      }
+    </script>
+    <div id="clickme" style="background-color: aqua; height:100px; width:100px">
+    </div>
+    <script>
+        document.getElementById("youtube-player").style.display="none";
+        document.getElementById("clickme").addEventListener("click", (evt)=>{
+            console.log(player);
+            player.playVideo();
+        });
+    </script>
         </div>
 
     </body>
