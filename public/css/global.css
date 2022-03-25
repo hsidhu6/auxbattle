@@ -52,3 +52,7 @@
     display: block;
 }
 /* End Dropdown CSS */
+
+button:hover {
+    cursor: pointer
+}
