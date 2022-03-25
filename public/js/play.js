@@ -58,8 +58,18 @@ function eventHandle() {
             });
             socket.on("roomCreated", (response) => {
                 console.log(response);
+                // Generate the settings
             });
         }
+    });
+
+    // JOIN script handled on room generation
+
+
+    // If the client saves the settings, send the settings object to the server
+    document.getElementById("settings-save-button").addEventListener("click", (evt) => {
+        let settings = {} // To implement, take settings from current GUI
+        socket.emit("saveSettings", settings);
     });
 
 }
