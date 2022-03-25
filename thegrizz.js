@@ -23,6 +23,24 @@ class GameManager {
  * in the room at any time.
  */
 class Room {
+    constructor (username, password, socket){
+        this.host = new Player (username, socket);
+        this.password = password;
+        this.settings = {
+            customPrompts: false,
+            maxPlayers: 32,
+            promptsToPlay: [], //to be implemented 
+            clipDuration: 30,
+            dcTime: 60,
+            voteTime: 90,
+            roundTime: 10,
+
+        }
+this.players = [this.host];
+this.bracket = {
+    
+}
+    }
 
 }
 
@@ -31,6 +49,11 @@ class Room {
  * All relative socket functions are held in the Player as well.
  */
 class Player {
+    constructor (username, socket){
+        this.username = username;
+        this.socket = socket;
+
+    }
 
 }
 
