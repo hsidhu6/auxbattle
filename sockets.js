@@ -29,7 +29,7 @@ function setupSocket(socket) {
     socket.on('createRoom', (response) => {
         console.log(response);
         // gameManager.createRoom(...)
-        socket.emit('createdRoom');
+        socket.emit('roomCreated');
     });
 }
 

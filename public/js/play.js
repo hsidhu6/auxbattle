@@ -2,7 +2,7 @@
  * The play.js script will handle all client side events and socket events.
  * 
  * @file play.js
- * @author Pirjot Atwal
+ * @author Pirjot Atwal, Harkamal Padda
  */
 
 // SOCKETS (PARTICULAR)
@@ -59,9 +59,20 @@ function eventHandle() {
             socket.on("roomCreated", (response) => {
                 console.log(response);
                 // Generate the settings
+                document.getElementById("create-room-modal").style.display = "none";
+                document.getElementById("menu1").style.display = "none";
+                document.getElementById("menu2").style.display = "block";
+               // configureSettings(response)
             });
         }
     });
+
+    document.getElementById("settings-play-button").addEventListener("click", (evt) => {
+        document.getElementById("menu2").style.display = "none";
+        document.getElementById("menu3").style.display = "block";
+
+    });
+
 
     // JOIN script handled on room generation
 
@@ -72,8 +83,45 @@ function eventHandle() {
         socket.emit("saveSettings", settings);
     });
 
+    let timer= null
+    document.getElementById("song-input").addEventListener("input", (evt) => {
+        clearTimeout(timer)
+        let songInput=document.getElementById("song-input");
+        timer= setTimeout((evt)=> {
+            console.log(songInput.value)
+            function loadClient() {
+                gapi.client.setApiKey("AIzaSyDZI6YC5YehHthYap8xJ_a0nMWxsn2wHFg");
+                return gapi.client.load("https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest")
+                    .then(function() { console.log("GAPI client loaded for API"); },
+                          function(err) { console.error("Error loading GAPI client for API", err); });
+              }
+              loadClient()
+              // Make sure the client is loaded and sign-in is complete before calling this method.
+              function execute() {
+                return gapi.client.youtube.search.list({})
+                    .then(function(response) {
+                            // Handle the results here (response.result has the parsed body).
+                            console.log("Response", response);
+                          },
+                          function(err) { console.error("Execute error", err); });
+              }
+        },
+        1000);
+    });
+
+   // AIzaSyDZI6YC5YehHthYap8xJ_a0nMWxsn2wHFg
+
+
+
+
+
+
+
 }
 
+function configureSettings(settings){
+    throw "not implemented"
+}
 
 
 document.addEventListener("DOMContentLoaded", (evt) => {
