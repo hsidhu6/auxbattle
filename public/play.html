@@ -8,10 +8,12 @@
     <head>
         <title>AuxBattle Play</title>
         <script src="https://apis.google.com/js/api.js"></script>
+        <script src="https://www.youtube.com/iframe_api"></script>
         <script src="/socket.io/socket.io.js"></script>
         <script src="js/play.js"></script>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
         <link rel="stylesheet" href="css/global.css">
+        <link rel="stylesheet" href="css/play.css">
     </head>
     
     <body style="height: 100%">
@@ -22,11 +24,11 @@
             <div style="border: 3px solid black; margin: auto; width: 500px; height: 500px; border-radius: 20%; padding: 20px; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: center;">
                 <h2 style="text-align:center; text-decoration: underline">Choose a Room</h2>
                 <div id="roomstable" style="width: 80%; height: 300px; padding: 20px 0px; border: 3px solid black; overflow-y: scroll; display: flex; flex-direction: column; flex-wrap: nowrap; grid-gap: 30px; align-items: center;">
-                    <div class="room" style="border: 3px solid black; width: 80%; height: 100px; padding: 10px 20px;">
+                    <div class="room">
                         <h2>Player's Room</h2>
                         <button>Join</button>
                     </div>
-                    <div class="room" style="border: 3px solid black; width: 80%; height: 100px; padding: 10px 20px;">
+                    <div class="room">
                         <h2>Player's Room</h2>
                         <button>Join</button>
                     </div>
@@ -35,7 +37,7 @@
             </div>
         </div>
         <!-- Modal for Room Input (Create) -->
-        <div id="create-room-modal" class="modal" style="display: none; height: 300px; padding: 100px 0px; left: 0; width: 100%; position: fixed; z-index: 2; top: 0; background-color: gray; margin: 100px auto; flex-direction: column; flex-wrap: nowrap; align-items: center;">
+        <div id="create-room-modal" class="modal">
             <h1>Room Input</h1>
             <div><label>Username: </label> <input id="create-room-user-input" style="width: 300px"></div>
             <div><label>Room Password:  </label><input style="width: 300px" id="create-room-pass-input"></div><br><br>
@@ -43,29 +45,47 @@
             <div><button id="create-room-submit">Submit</button><button id="create-room-cancel">Cancel</button></div>
         </div>
         <!-- Modal for Room Input (Join) -->
-        <div class="modal" style="display: none; height: 300px; padding: 100px 0px; left: 0; width: 100%; position: fixed; z-index: 2; top: 0; background-color: gray; margin: 100px auto; flex-direction: column; flex-wrap: nowrap; align-items: center;">
+        <div id="join-room-modal" class="modal">
             <h1>Room Input</h1>
-            <div><label>Room Password:  </label><input style="width: 300px" id="room-input"></div><br><br>
-            <div><label>Username: </label> <input style="width: 300px" id="user-input"></div>
-            <p>Status Message</p>
-            <button>Submit</button>
+            <div><label>Username: </label> <input style="width: 300px" id="join-room-user-input"></div>
+            <div><label>Room Password:  </label><input style="width: 300px" id="join-room-pass-input"></div><br><br>
+            <p id="join-room-status"></p>
+            <div><button id="join-room-submit">Submit</button><button id="join-room-cancel">Cancel</button></div>
         </div>
         <!-- Menu for Room Settings -->
         <div id="menu2" style="display: none; height:90%; width:100%; border: 2px solid black">
             <div style="border: 3px solid black; margin: auto; width: 500px; height: 500px; border-radius: 20%; padding: 20px; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: center;">
                 <h2 style="text-align:center; text-decoration: underline">Room Settings</h2>
-                <div id="roomsetting" style="width: 100%; height: 300px; padding: 20px 0px; border: 3px solid black; overflow-y: scroll; display: flex; flex-direction: row; flex-wrap: nowrap; grid-gap: 30px; align-items: center; justify-content: space-around;">
-                    <div id="settingmenu" style="width: 45%; height: 300px; padding: 20px 0px; border: 3px solid black; overflow-y: scroll;">
-                        <div class="settingbox" style="width: 80%; height: 100px; display: flex; flex-direction: row;">
-                            <h3>SETTING NAME</h3>
-                            <input type="text">
+                <div id="roomsetting" style="display: flex; flex-direction: column; overflow-y: scroll; height: 375px; padding-bottom: 25px">
+                    <div id="menus" style="width: 95%; min-height: 300px; padding: 35px 0px; border: 3px solid black; display: flex; flex-direction: row; flex-wrap: nowrap; grid-gap: 30px; align-items: center; justify-content: space-around;">
+                        <div id="settingmenu" style="width: 45%; height: 300px; padding: 20px 0px; border: 3px solid black; overflow-y: scroll; display: flex; flex-direction:column; grid-gap: 5px;">
+                            <div style="display:grid;grid-template-columns: 3fr 1fr;align-items: center;height: 75px;border: 3px solid black;border-radius: 10%;padding: 10px;">
+                                <h4 style="margin: 0px">Clip Duration (seconds): </h4><input style="height: min-content; width: 40px" type="number">
+                            </div>
+                            <div style="display:grid;grid-template-columns: 3fr 1fr;align-items: center;height: 75px;border: 3px solid black;border-radius: 10%;padding: 10px;">
+                                <h4 style="margin: 0px">Max Players: </h4><input style="height: min-content; width: 40px" type="number">
+                            </div>
+                            <div style="display:grid;grid-template-columns: 3fr 1fr;align-items: center;height: 75px;border: 3px solid black;border-radius: 10%;padding: 10px;">
+                                <h4 style="margin: 0px">Max DC Time (seconds): </h4><input style="height: min-content; width: 40px" type="number">
+                            </div>
+                            <div style="display:grid;grid-template-columns: 3fr 1fr;align-items: center;height: 75px;border: 3px solid black;border-radius: 10%;padding: 10px;">
+                                <h4 style="margin: 0px">Voting Time (seconds): </h4><input style="height: min-content; width: 40px" type="number">
+                            </div>
+                        </div>
+                        <div id="playersmenu" style="width: 45%; height: 300px; padding: 20px 0px; border: 3px solid black; display: flex; flex-direction: column; flex-wrap: nowrap; overflow-y: scroll">
+                            <div class="player">
+                                <h4>Player Name</h4>
+                                <div>
+                                    <div></div><button>Kick</button><button>Ban</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div id="players" style="width: 45%; height: 300px; padding: 20px 0px; border: 3px solid black; display: flex; flex-direction: column; flex-wrap: nowrap; overflow-y: scroll">
-                        <div class="player" style="display: flex; flex-direction: row; flex-wrap: nowrap; justify-content: space-evenly;">
-                            <h3>PLAYER NAME</h3>
-                            <button>BUTTON</button>
-                            <button>BUTTON</button>
+                    <div id="prompts" style="width: 95%; max-width: 450px; min-height: 300px; padding: 5px; border: 3px solid black; overflow-y: scroll;">
+                        <h2>Prompts Menu</h2>
+                        <div id="promptsmenu" style="display: grid; grid-template-columns: 5fr 1fr; align-items:center">
+                            <h3>PROMPT NAME</h3> <button style="height:min-content">SELECTED</button>
+                            <h3>PROMPT NAME</h3> <button style="height:min-content">SELECT</button>
                         </div>
                     </div>
                 </div>
@@ -76,7 +96,7 @@
             </div>
         </div>
         <!-- Menu for playing game (choosing) -->
-        <div id="menu3" style="display: none; height:90%; width:100%; border: 2px solid black">
+        <div id="menu3" style="display: block; height:90%; width:100%; border: 2px solid black">
             <button style="position: fixed; right:0; top:0; z-index: 3">Show Bracket</button>
             <div style="border: 3px solid black; margin: auto; width: 500px; height: 500px; border-radius: 20%; padding: 20px; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: center;">
                 <h2 style="text-align:center; text-decoration: underline; margin-bottom: 0px">It's Your Turn!</h2>
@@ -84,8 +104,8 @@
                 <div><label>Timer: </label><input type="number" style="width: 100px" id="timetext-input"><label> seconds</label></div>
                 <div><label>Search a Song:  </label><input style="width: 300px" id="song-input"></div>
                 <div id="videostable" style="width: 80%; height: 300px; margin-top: 20px; padding: 20px 0px; border: 3px solid black; overflow-y: scroll; display: flex; flex-direction: column; flex-wrap: nowrap; grid-gap: 30px; align-items: center;">
-                    <div class="video" style="border: 3px solid black; width: 80%; height: 100px; padding: 10px 20px; display:flex; flex-direction: row; align-items: center; justify-content: space-evenly;">
-                        <img style="height: 50px; width: 50px">
+                    <div class="video">
+                        <i class="fa fa-3x fa-play"></i>
                         <div>
                             <h3>Video Name</h3>
                             <h4>By </h4>
@@ -95,7 +115,7 @@
                 </div>
             </div>
         </div>
-        <div class="modal" style="display: none; height: 300px; padding: 100px 0px; left: 0; width: 100%; position: fixed; z-index: 2; top: 0; background-color: gray; margin: 100px auto; flex-direction: column; flex-wrap: nowrap; align-items: center;">
+        <div class="modal">
             <h1>Clip Video</h1>
             <h3>Your clip will be of the following duration: <span>DURATION seconds</span>.</h3>
             <div><label>Select a starting position:  </label><input type="range" min="1" max="100" value="50" class="slider" id="time-input"></div>

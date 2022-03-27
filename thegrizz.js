@@ -3,16 +3,121 @@
  * Expected to be imported by sockets.js.
  * 
  * @file thegrizz.js
- * @author Harjyot Sidhu
+ * @author Harjyot Sidhu, Pirjot Atwal
  */
 
 /**
  * The GameManager keeps track of a list of rooms
  * and any facilitation that the server needs to run
  * all games.
+ * 
+ * NOTE: On socket IDs, we will handle the disconnect and
+ * reconnection of players who leave games. All connection IDs
+ * (both new and old) are mapped in the connections map.
+ * Thus, it is expected that the socket ID of every player in
+ * any used instance variable of the GameManager remains consistennt
+ * outside of the GameManager instance.
  */
 class GameManager {
+    constructor() {
+        this.rooms = [];
+    }
 
+    /**
+     * Creates a new room from a given username and password
+     * initializing the Host as a Player.
+     * @param {*} username 
+     * @param {*} password 
+     * @returns Returns the new room settings
+     */
+    createRoom(username, password, socketID) {
+        let newRoom = new Room(username, password, socketID);
+        this.rooms.push(newRoom);
+        return newRoom.settings;
+    }
+
+    /**
+     * 
+     * @param {*} hostUsername 
+     * @param {*} username 
+     * @param {*} password 
+     * @param {*} socketID 
+     */
+    joinRoom(hostUsername, username, password, socketID) {
+        let room = null;
+        for (let rom of this.rooms) {
+            if (rom.host.username == hostUsername) {
+                room = rom;
+                break;
+            }
+        }
+        if (room.password == password) {
+            room.addPlayer(username, socketID);
+            return room.settings;
+        } else {
+            return {success: false, message: "PASSWORD IS INCORRECT."}
+        }
+    }
+
+    /**
+     * Returns the state of the room.
+     * @returns 
+     */
+    getRoomState(socketID) {
+        let state = {
+            players: [],
+            settings: null,
+            state: null
+        };
+        let playerRoom = null;
+        for (let room of this.rooms) {
+            for (let player of room.players) {
+                if (player.socketID == socketID) {
+                    playerRoom = room;
+                    break;
+                }
+            }
+            if (playerRoom != null) { // Shortcut
+                break;
+            }
+        }
+        for (let player of playerRoom.players) {
+            state.players.push(player.username);
+        }
+        state.settings = playerRoom.settings;
+        state.state = playerRoom.state;
+        return state;
+    }
+
+    /**
+     * Get a list of all room hosts
+     * @returns A list of all room hosts
+     */
+    getRoomHosts() {
+        let rooms = [];
+        for (let room of this.rooms) {
+            rooms.push({
+                host: room.host.username,
+            });
+        }
+        return rooms;
+    }
+
+    /**
+     * Check if a given username has not been used yet. (not case sensitive)
+     * @param {String} username
+     * @returns true if unique, false otherwise.
+     */
+    isUniqueUsername(username) {
+        for (let room of this.rooms) {
+            for (let player of room.players) {
+                if (player.username.toLowerCase() == username.toLowerCase()) {
+                    return false;
+                }
+            } 
+        }
+        return true;
+    }
 }
 
 // Taken from https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
@@ -24,6 +129,11 @@ function shuffleArray(array) {
 }
 
 class Bracket {
+    /**
+     * Construct a Bracket from a list of players
+     * Is stored in the .bracket variable.
+     * @param {*} players 
+     */
     constructor (players) {
         shuffleArray(players);
         let pairs = [];
@@ -46,12 +156,14 @@ class Bracket {
                 1: pairs,
             },
             winner: null,
-            history: {}
+            history: {
+                "orig": pairs
+            }
         }
     }
 
     /**
-     * 
+     * Play a matchup, updating the rounds and history of the bracket.
      * @param {*} roundNumber 
      * @param {*} matchup 
      * @param {*} winner 
@@ -71,7 +183,6 @@ class Bracket {
         // Update the bracket
         if (this.bracket.rounds[roundNumber].length == 1) {
             this.bracket.winner = winner;
-            console.log("THE WINNER OF THE TOURNEY IS:  " + winner);
         } else {
             if (!Object.keys(this.bracket.rounds).includes(String(Number(roundNumber)+1))) {
                 this.bracket.rounds[Number(roundNumber)+1] = [];
@@ -138,30 +249,7 @@ class Bracket {
     }
 }
 
-function ex() {
-    let players = ["Flakejyot", "Harjyot", "Bikram Saini", "Number 1 Best", "Cool Guy Tough Guy", "NWordJyot", "TargetJyot", "Lavi", "Hark"];
-    let bracket = new Bracket(players);
-    for (let i = 0; i < 7; i++) {
-        // break;
-        let nextMatchup = bracket.getNextMatchup();
-        let pair = nextMatchup[0];
-        let round = nextMatchup[1];
-        let winner = pair[Math.floor(Math.random() * (1 + 1))];
-        if (winner == undefined) {
-            winner = pair[0];
-        }
-        console.log("The next matchup is ", nextMatchup);
-        console.log("The winner is ", winner);
 
-        bracket.playNextMatchup(round, pair, winner);
-        console.log("The updated bracket's rounds ", bracket.bracket.rounds);
-        console.log("The updated history is ", bracket.bracket.history);
-    }
-
-    
-}
-
-ex();
 /**
  * The Room keeps track of all current logged in players,
  * the host, the room settings, the current bracket,
@@ -170,42 +258,36 @@ ex();
  * in the room at any time.
  */
 class Room {
-    constructor (username, password, socket){
-        this.host = new Player (username, socket);
+    constructor (username, password, socketID){
+        this.host = new Player (username, socketID);
         this.password = password;
         this.settings = {
-            customPrompts: false,
             maxPlayers: 32,
             promptsToPlay: [], //to be implemented 
             clipDuration: 30,
             dcTime: 60,
             voteTime: 90,
             roundTime: 10,
-
         }
         this.players = [this.host];
         this.state = "setting";
-        this.possibleStates = ["setting", "round", "voting", "result"];
+        this.possibleStates = ["setting", "playing", "voting", "result"];
+    }
 
-    
-
+    addPlayer(username, socketID) {
+        this.players.push(new Player(username, socketID));
+    }
 }
 
 /**
- * The Player keeps track of a player's socket and their username.
+ * The Player keeps track of a player's socketID and their username.
  * All relative socket functions are held in the Player as well.
  */
 class Player {
-    constructor (username, socket){
+    constructor (username, socketID){
         this.username = username;
-        this.socket = socket;
-
+        this.socketID = socketID;
     }
-
-}
-
-class Round {
-    
 }
 
 module.exports = {

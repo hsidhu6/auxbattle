@@ -1,0 +1,44 @@
+/* 
+    This CSS file contains styling for elements and classes on the play.html
+    page.
+*/
+
+.modal {
+    display: none;
+    height: 300px;
+    padding: 100px 0px;
+    left: 0;
+    width: 100%;
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    background-color: gray;
+    margin: 100px auto;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+.room {
+    border: 3px solid black;
+    width: 80%;
+    height: 100px;
+    padding: 10px 20px;
+}
+
+.player {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 3px;
+    border-bottom: 3px solid black
+}
+
+.video {
+    border: 3px solid black;
+    width: 80%;
+    padding: 10px 20px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-evenly;
+}

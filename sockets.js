@@ -9,27 +9,47 @@ let gameManager = new classes.GameManager();
 
 let connections = {}; // Maps Original Socket IDS to an array of all sockets that the user with the OG socket ID generated through reconnections
 
-function sendToAllConnectedSockets(message, arg) {
-    for (let key of Object.keys(connections)) {
-        // let 
-    }
-}
-
 function setupSocket(socket) {
-    socket.on('persist', function (ID) { // client will send what their OG ID is
+    socket.on('persist', (ID, callback=()=>{}) => { // client will send what their OG ID is
         if (!Object.keys(connections).includes(ID)) { // This is a new user, tell them to save their current ID to cache
-            connections[socket.id] = [socket];
-            socket.emit("saveID", socket.id);
+            connections[socket.id] = [socket.id];
+            socket.userID = socket.id;
+            callback(socket.id);
         } else { // This user reconnected, add them to the pool
-            connections[ID].push(socket);
+            connections[ID].push(socket.id);
+            socket.userID = ID;
+        }
+    });
+    // TODO: Socket relogin here
+
+    // Get Rooms Request
+    socket.on("get-room-hosts", (callback) => {
+        callback(gameManager.getRoomHosts());
+    });
+
+    // Fetch the room state
+    socket.on("fetch-room-state", (callback) => {
+        callback(gameManager.getRoomState(socket.userID));
+    });
+    
+    // Create Room request, expects a username and room password
+    socket.on('createRoom', (username, password, callback) => {
+        if (gameManager.isUniqueUsername(username)) {
+            let settings = gameManager.createRoom(username, password, socket.userID);
+            callback(settings);
+        } else {
+            callback({success: false, message: "USERNAME NOT UNIQUE"});
         }
     });
 
-    // Create Room request, expects a username and room password
-    socket.on('createRoom', (response) => {
-        console.log(response);
-        // gameManager.createRoom(...)
-        socket.emit('roomCreated');
+    // Join Room request, expects hostUsername, username, and room password
+    socket.on('joinRoom', (hostUsername, username, password, callback) => {
+        if (gameManager.isUniqueUsername(username)) {
+            let status = gameManager.joinRoom(hostUsername, username, password, socket.userID);
+            callback(status);
+        } else {
+            callback({success: false, message: "USERNAME NOT UNIQUE"});
+        }
     });
 }
 
@@ -39,9 +59,6 @@ function setup(io) {
         setupSocket(socket);
     });
 }
-
-
-
 
 module.exports = {
     setup
