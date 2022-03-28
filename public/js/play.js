@@ -153,7 +153,7 @@ function createModalShowStatus(inputs, statusID, message) {
 /**
  * TODO
  */
-async function eventHandle() {
+function eventHandle() {
     updateRooms(); // Automatically refreshes itself every 10 seconds
 
     // If the client clicks the create room button, show the modal to configure the room
@@ -194,6 +194,9 @@ async function eventHandle() {
     });
 
     document.getElementById("settings-play-button").addEventListener("click", (evt) => {
+        socket.emit("play", (response) => {
+
+        });
         document.getElementById("menu2").style.display = "none";
         document.getElementById("menu3").style.display = "block";
     });
@@ -302,9 +305,15 @@ function initYoutube() {
     document.body.append(dummyDIV);
     player = new YT.Player("dummyDIV", {
         playerVars: {
-            disablekb: 1,
-            controls: 1,
-            playsinline: 1
+            "playsinline" : 1,
+            "showinfo":0,
+            "autoplay":1,
+            "origin" : "https://www.youtube.com",
+            "controls" : 0,
+            "enablejsapi": 1,
+            "rel": 0,
+            "iv_load_policy": 3,
+            "cc_load_policy":1
         },
     });
 }
@@ -355,11 +364,11 @@ function displayVideos(videos) {
         videoDIV.append(icon, outerDIV, selectButton);
         videoTable.append(videoDIV);
     }
-
+    
 }
 
 function updateRoomState() {
-    setTimeout(updateRoomState, 2000);
+    setTimeout(updateRoomState, 1000);
     socket.emit("fetch-room-state", (response) => {
         displayPlayers(response.players);
     });
@@ -374,8 +383,7 @@ async function configureSettings(settings) {
     throw "not implemented"
 }
 
-
-document.addEventListener("DOMContentLoaded", (evt) => {
+document.addEventListener("DOMContentLoaded", async (evt) => {
     eventHandle();
 });
 

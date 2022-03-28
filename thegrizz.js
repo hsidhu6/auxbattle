@@ -60,22 +60,21 @@ class GameManager {
     }
 
     /**
-     * Returns the state of the room.
+     * Start the game in a room.
+     * @param {*} socketID 
+     */
+    playGame(socketID) {
+        // 1. Check that the socketID belongs to a host.
+        // 2. Tell the Room to start the game.
+    }
+
+    /**
+     * Return the room that this socket is in, return null if the
+     * person is not in any socket.
+     * @param {*} socketID 
      * @returns 
      */
-    //if a player is not in a room return a false message
-    getRoomState(socketID) {
-        let state = {
-            players: [],
-            settings: null,
-            state: null,
-            roles: {
-                host: playerRoom.host.username, //set to host username
-                playing:[playerRoom.currentlyPlaying, playerRoom.currentlyPlaying] / [null], //set to people playing
-                voting: [playerRoom.voting, playerRoom.voting, playerRoom.voting, playerRoom.voting], //set to people voting
-            }
-        };
-        
+    getRoom(socketID) {
         let playerRoom = null;
         for (let room of this.rooms) {
             for (let player of room.players) {
@@ -88,11 +87,38 @@ class GameManager {
                 break;
             }
         }
+        return playerRoom;
+    }
+
+    /**
+     * Returns the state of the room.
+     * @returns 
+     */
+    //if a player is not in a room return a false message
+    getRoomState(socketID) {
+        let state = {
+            players: [],
+            settings: null,
+            state: null,
+            roles: {
+                host: null,
+                playing: null,
+                voting: null
+            }
+        };
+        let playerRoom = getRoom(socketID);
+        if (playerRoom == null) {
+            return {success: false, message: "USER NOT IN ROOM"};
+        }
+
         for (let player of playerRoom.players) {
             state.players.push(player.username);
         }
         state.settings = playerRoom.settings;
         state.state = playerRoom.state;
+        state.roles.host = playerRoom.host.username;
+        state.roles.players = playerRoom.currentlyPlaying;
+        state.roles.voting = playerRoom.voting;
         return state;
     }
 
@@ -139,7 +165,7 @@ class Bracket {
     /**
      * Construct a Bracket from a list of players
      * Is stored in the .bracket variable.
-     * @param {*} players 
+     * @param {*} players
      */
     constructor (players) {
         shuffleArray(players);
@@ -154,15 +180,26 @@ class Bracket {
         if (pairs.length % 2 == 1) {
             pairs.unshift(pairs.pop());
         }
+        if (Bracket.roundBool) {
+            Bracket.roundBool = false;
+            this.maxRounds = determineRounds(players.length);
+            Bracket.roundBool = true;
+        }
         this.bracket = this.buildBracket(pairs);
     }
 
+    /**
+     * Build the template of a bracket and any associated
+     * variables.
+     * @param {*} pairs 
+     * @returns 
+     */
     buildBracket(pairs) {
+        this.winner = null;
         return {
             rounds: {
                 1: pairs,
             },
-            winner: null,
             history: {
                 "orig": pairs
             }
@@ -176,6 +213,10 @@ class Bracket {
      * @param {*} winner 
      */
     playNextMatchup(roundNumber, matchup, winner) {
+        if (this.winner != null) {
+            return false;
+        }
+
         // Default winner for bye
         if (matchup.length == 1) {
             winner = matchup[0];
@@ -188,8 +229,8 @@ class Bracket {
         this.bracket.history[roundNumber].push(matchup);
 
         // Update the bracket
-        if (this.bracket.rounds[roundNumber].length == 1) {
-            this.bracket.winner = winner;
+        if (this.bracket.rounds[roundNumber].length == 1) { // Assumes that if there is only one pair in this round, this is the finals.
+            this.winner = winner;
         } else {
             if (!Object.keys(this.bracket.rounds).includes(String(Number(roundNumber)+1))) {
                 this.bracket.rounds[Number(roundNumber)+1] = [];
@@ -228,11 +269,11 @@ class Bracket {
         }
     }
 
+    /**
+     * 
+     * @returns {Array} [matchup, round]
+     */
     getNextMatchup() {
-        if (this.bracket == undefined) {
-            return false;
-        }
-
         let nextMatchup = null;
         for (let round of Object.keys(this.bracket.rounds)) {
             let matchups = this.bracket.rounds[round];
@@ -247,7 +288,6 @@ class Bracket {
                     break;
                 }
             }
-
             if (nextMatchup != null) {
                 break;
             }
@@ -255,7 +295,26 @@ class Bracket {
         return nextMatchup;
     }
 }
-
+Bracket.roundBool = true;
+Bracket.maxRounds = {};
+function determineRounds(length) {
+    if (Bracket.maxRounds[length] != undefined) {
+        return Bracket.maxRounds[length];
+    }
+    let players = [];
+    for (let i = 0; i < length; i++) {
+        players.push(i);
+    }
+    let b = new Bracket(players);
+    let i = 0;
+    while (b.winner == null) {
+        let res = b.getNextMatchup();
+        b.playNextMatchup(res[1], res[0], res[0][0]);
+        i++;
+    }
+    Bracket.maxRounds[length] = i;
+    return i;
+}
 
 /**
  * The Room keeps track of all current logged in players,
@@ -279,18 +338,28 @@ class Room {
         this.players = [this.host];
         this.state = "setting";
         this.possibleStates = ["setting", "playing", "voting", "result"];
-        this.bracket = new Bracket(this.players);
-        this.currentlyPlaying = [matchup, matchup] //Player Instance
-        this.voting = [] //Player Instance
+        this.currentlyPlaying = null;
+        this.voting = null;
+        this.bracket = null;
+        this.roundStatus = {
+            submittedVideos: null,
+            timer: null,
+            votes: null
+        };
     }
 
     addPlayer(username, socketID) {
         this.players.push(new Player(username, socketID));
     }
-    updateRoles() { //to be implemented 
-        //assume this.bracket is updated
-        let players;
-        let nextMatchup = this.bracket.getNextMatchup[];//EITHER [PLAYER, PLAYER] or [PLAYER]
+
+    initializeGame() {
+        // Initialize the bracket
+
+        // Set the currentPlaying, voting, based on the nextMatchup
+    }
+
+    incrementState() {
+        
     }
 }
 
