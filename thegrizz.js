@@ -63,12 +63,19 @@ class GameManager {
      * Returns the state of the room.
      * @returns 
      */
+    //if a player is not in a room return a false message
     getRoomState(socketID) {
         let state = {
             players: [],
             settings: null,
-            state: null
+            state: null,
+            roles: {
+                host: playerRoom.host.username, //set to host username
+                playing:[playerRoom.currentlyPlaying, playerRoom.currentlyPlaying] / [null], //set to people playing
+                voting: [playerRoom.voting, playerRoom.voting, playerRoom.voting, playerRoom.voting], //set to people voting
+            }
         };
+        
         let playerRoom = null;
         for (let room of this.rooms) {
             for (let player of room.players) {
@@ -272,10 +279,18 @@ class Room {
         this.players = [this.host];
         this.state = "setting";
         this.possibleStates = ["setting", "playing", "voting", "result"];
+        this.bracket = new Bracket(this.players);
+        this.currentlyPlaying = [matchup, matchup] //Player Instance
+        this.voting = [] //Player Instance
     }
 
     addPlayer(username, socketID) {
         this.players.push(new Player(username, socketID));
+    }
+    updateRoles() { //to be implemented 
+        //assume this.bracket is updated
+        let players;
+        let nextMatchup = this.bracket.getNextMatchup[];//EITHER [PLAYER, PLAYER] or [PLAYER]
     }
 }
 
