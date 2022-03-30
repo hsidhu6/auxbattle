@@ -51,6 +51,11 @@ function setupSocket(socket) {
             callback({success: false, message: "USERNAME NOT UNIQUE"});
         }
     });
+
+    // Play Room request, start the game
+    socket.on('play', (callback) => {
+        gameManager.playGame(socket.userID);
+    });
 }
 
 

@@ -195,7 +195,7 @@ function eventHandle() {
 
     document.getElementById("settings-play-button").addEventListener("click", (evt) => {
         socket.emit("play", (response) => {
-
+            console.log(response);
         });
         document.getElementById("menu2").style.display = "none";
         document.getElementById("menu3").style.display = "block";
@@ -370,6 +370,7 @@ function displayVideos(videos) {
 function updateRoomState() {
     setTimeout(updateRoomState, 1000);
     socket.emit("fetch-room-state", (response) => {
+        console.log(response);
         displayPlayers(response.players);
     });
 }

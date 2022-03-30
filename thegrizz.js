@@ -17,9 +17,10 @@
  * Thus, it is expected that the socket ID of every player in
  * any used instance variable of the GameManager remains consistennt
  * outside of the GameManager instance.
+ * 
  */
 class GameManager {
-    constructor() {
+    constructor(displayFunc) {
         this.rooms = [];
     }
 
@@ -37,7 +38,7 @@ class GameManager {
     }
 
     /**
-     * 
+     * TODO
      * @param {*} hostUsername 
      * @param {*} username 
      * @param {*} password 
@@ -65,7 +66,15 @@ class GameManager {
      */
     playGame(socketID) {
         // 1. Check that the socketID belongs to a host.
+        let room = this.getRoom(socketID);
+        if (room == null) {
+            return {success: false, message: "ROOM DOES NOT EXIST."};
+        }
+        if (room.host.socketID != socketID) {
+            return {success: false, message: "YOU ARE NOT HOST."};
+        }
         // 2. Tell the Room to start the game.
+        room.startGame();
     }
 
     /**
@@ -91,35 +100,15 @@ class GameManager {
     }
 
     /**
-     * Returns the state of the room.
+     * Returns the state of the room (STRIPPED).
      * @returns 
      */
-    //if a player is not in a room return a false message
     getRoomState(socketID) {
-        let state = {
-            players: [],
-            settings: null,
-            state: null,
-            roles: {
-                host: null,
-                playing: null,
-                voting: null
-            }
-        };
-        let playerRoom = getRoom(socketID);
-        if (playerRoom == null) {
+        let playerRoom = this.getRoom(socketID);
+        if (playerRoom == null) { //if a player is not in a room return a false message
             return {success: false, message: "USER NOT IN ROOM"};
         }
-
-        for (let player of playerRoom.players) {
-            state.players.push(player.username);
-        }
-        state.settings = playerRoom.settings;
-        state.state = playerRoom.state;
-        state.roles.host = playerRoom.host.username;
-        state.roles.players = playerRoom.currentlyPlaying;
-        state.roles.voting = playerRoom.voting;
-        return state;
+        return playerRoom.getStrippedStatus();
     }
 
     /**
@@ -168,6 +157,7 @@ class Bracket {
      * @param {*} players
      */
     constructor (players) {
+        this.players = players;
         shuffleArray(players);
         let pairs = [];
         for (let i = 0; i < players.length; i += 2) {
@@ -271,7 +261,7 @@ class Bracket {
 
     /**
      * 
-     * @returns {Array} [matchup, round]
+     * @returns {Array<Player>} [matchup, round]
      */
     getNextMatchup() {
         let nextMatchup = null;
@@ -334,34 +324,115 @@ class Room {
             dcTime: 60,
             voteTime: 90,
             roundTime: 10,
+            messageTime: 7,
         }
         this.players = [this.host];
-        this.state = "setting";
-        this.possibleStates = ["setting", "playing", "voting", "result"];
-        this.currentlyPlaying = null;
-        this.voting = null;
+        this.possibleStates = ["setting", "playing", "message", "paused", "voting", "result"];
+        
+        // GAME VARS
         this.bracket = null;
         this.roundStatus = {
+            state: "setting",
+            currentlyPlaying: null,
+            voting: null,
+            maxRounds: null,
+            currentRound: null,
             submittedVideos: null,
             timer: null,
-            votes: null
+            votes: null,
+            winner: null,
+            messageActive: false,
+            message: {
+                header: null,
+                message: null
+            }
         };
     }
 
+    /**
+     * Add a player to the players array.
+     * @param {*} username
+     * @param {*} socketID
+     */
     addPlayer(username, socketID) {
         this.players.push(new Player(username, socketID));
     }
 
-    initializeGame() {
+    startGame() {
         // Initialize the bracket
+        this.bracket = new Bracket(this.players);
+        this.roundStatus.maxRounds = this.bracket.maxRounds;
+        this.roundStatus.currentRound = 1;
+        // TODO: Initialize Timer
+        // this.roundStatus.timer = new Timer();
 
-        // Set the currentPlaying, voting, based on the nextMatchup
+        // INITIALIZE THE GAME
+        console.log("STARTING GAME");
+        // Start GameplayLoop()
+        this.mainGameplayLoop();
+    }
+
+    mainGameplayLoop() {
+        // Get the next matchup, set the currentPlaying, voting, based on the nextMatchup
+        this.updateByNextMatchup();
+
+        // Display the next matchup to the client.
+        this.roundStatus.messageActive = true;
+        this.roundStatus.message = {
+            header: "HEADER",
+            message: "MESSAGE"
+        };
+        
+        // Set the timer, to the message time
+        setInterval(() => {
+            this.roundStatus.messageActive = false;
+        }, this.settings.messageTime * 1000);
+
+
+
+
+    }
+
+    updateByNextMatchup() {
+        let matchup = this.bracket.getNextMatchup();
+        this.roundStatus.currentRound = matchup[1];
+        this.roundStatus.currentlyPlaying = matchup[0];
+        this.roundStatus.voting = [];
+
+        let sockets = this.roundStatus.currentlyPlaying.map((player) => player.socketID);
+        for (let player of this.players) {
+            if (!sockets.includes(player.socketID)) {
+                this.roundStatus.voting.push(player);
+            }
+        }
     }
 
     incrementState() {
         
     }
+
+    /**
+     * Get a stripped version of this room's status to send to
+     * the client.
+     */
+    getStrippedStatus() {
+        let players = [];
+        for (let player of this.players) {
+            players.push(player.username);
+        }
+        let status = {
+            host: this.host.username,
+            players,
+            state: this.roundStatus.state,
+            currentPlaying: this.roundStatus.currentlyPlaying && this.roundStatus.currentlyPlaying.map((player) => player.username),
+            voting: this.roundStatus.voting && this.roundStatus.voting.map((player) => player.username),
+            messageActive: this.roundStatus.messageActive,
+            message: this.roundStatus.message
+        };
+        return status;
+    }
 }
+
 
 /**
  * The Player keeps track of a player's socketID and their username.
