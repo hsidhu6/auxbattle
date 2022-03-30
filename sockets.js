@@ -54,7 +54,7 @@ function setupSocket(socket) {
 
     // Play Room request, start the game
     socket.on('play', (callback) => {
-        gameManager.playGame(socket.userID);
+        callback(gameManager.playGame(socket.userID));
     });
 }
 

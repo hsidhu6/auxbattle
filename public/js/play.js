@@ -196,9 +196,13 @@ function eventHandle() {
     document.getElementById("settings-play-button").addEventListener("click", (evt) => {
         socket.emit("play", (response) => {
             console.log(response);
+            if (!response.success) {
+                alert(response.message);
+            } else {
+                document.getElementById("menu2").style.display = "none";
+                document.getElementById("menu3").style.display = "block";
+            }
         });
-        document.getElementById("menu2").style.display = "none";
-        document.getElementById("menu3").style.display = "block";
     });
 
 
@@ -225,7 +229,7 @@ function eventHandle() {
  * TODO
  */
 async function updateRooms() {
-    setTimeout(updateRooms, 10000);
+    setTimeout(updateRooms, 3000);
     socket.emit("get-room-hosts", (response) => {
         let rooms = response;
         let table = document.getElementById("roomstable"); // GUI menu1 > Room Div
@@ -367,11 +371,98 @@ function displayVideos(videos) {
     
 }
 
+function displayPauseModal(show, message, time) {
+    let modal = document.getElementById("pause-modal");
+    if (!show) {
+        modal.style.display = "none";
+        return;
+    }
+
+    let header = document.getElementById("pause-modal-header");
+    let timer = document.getElementById("pause-modal-timer");
+    let messageP = document.getElementById("pause-modal-message");
+    header.textContent = message.header;
+    timer.value = time;
+    messageP.textContent = message.message;
+
+    modal.style.display = "flex";
+}
+
 function updateRoomState() {
     setTimeout(updateRoomState, 1000);
     socket.emit("fetch-room-state", (response) => {
         console.log(response);
-        displayPlayers(response.players);
+        displayPauseModal(response.messageActive, response.message, response.time); // For Messages / Waiters / Pausing
+        displayPlayers(response.players); // For the Room Menu
+
+        /**
+         * 
+         * @param {Array<String>} showThese IDs of menus to show, hides everything else on the screen
+         */
+        function robustDisplay(showThese) {
+            let menuIDs = [
+                "menu1", // Room Menu
+                "menu2", // Room Settings
+                "menu3", // Video Select Menu
+                "menu4", // Voting Menu
+                "menu5", // Results Screen
+            ];
+            let modalIDs = [
+                "create-room-modal",
+                "join-room-modal",
+                "clip-video-modal",
+                "pause-modal",
+            ];
+            // For all elements needed to show, show them, otherwise turn all the rest off
+            for (let id of showThese) {
+                if (menuIDs.includes(id)) {
+                    document.getElementById(id).style.display = "block";
+                } else {
+                    document.getElementById(id).style.display = "flex";
+                }
+            }
+            // Hide all others
+            for (let id of menuIDs) {
+                if (!showThese.includes(id)) {
+                    document.getElementById(id).style.display = "none";
+                }
+            }
+            for (let id of modalIDs) {
+                if (!showThese.includes(id)) {
+                    document.getElementById(id).style.display = "none";
+                }
+            }
+        }
+        if (response.role != "player" && player != null) { // Pause background player
+            player.stopVideo();
+        }
+         if (response.state == "playing") {
+            if (response.role == "player") {
+                // Configure view for player, submission would be completed on click of button
+                robustDisplay(["menu3"]);
+            } else {
+                // Configure view for waiter, waits until timer is done
+                // Assumes messageActive = true.
+                robustDisplay(["menu4", "pause-modal"]);
+            }
+
+        } else if (response.state == "voting") {
+            if (response.role == "voter") {
+                // Configure view for voter, submission would be completed on click of button
+                robustDisplay(["menu4"]);
+            } else {
+                // Configure view for waiter, waits until time is done
+                // Assumes messageActive = true.
+                robustDisplay(["menu5", "pause-modal"]);
+            }
+        } else if (response.state == "results") {
+            // View the results
+            robustDisplay(["menu5"]);
+        } else if (response.state == "setting") {
+            // Revert back to settings
+            robustDisplay(["menu2"]);
+        }
+
     });
 }
 

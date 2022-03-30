@@ -19,7 +19,7 @@
  * outside of the GameManager instance.
  * 
  */
-class GameManager {
+ class GameManager {
     constructor(displayFunc) {
         this.rooms = [];
     }
@@ -45,6 +45,7 @@ class GameManager {
      * @param {*} socketID 
      */
     joinRoom(hostUsername, username, password, socketID) {
+        // TODO MaxPlayers, Banned Requirement
         let room = null;
         for (let rom of this.rooms) {
             if (rom.host.username == hostUsername) {
@@ -56,7 +57,7 @@ class GameManager {
             room.addPlayer(username, socketID);
             return room.settings;
         } else {
-            return { success: false, message: "PASSWORD IS INCORRECT." }
+            return {success: false, message: "PASSWORD IS INCORRECT."}
         }
     }
 
@@ -74,7 +75,7 @@ class GameManager {
             return {success: false, message: "YOU ARE NOT HOST."};
         }
         // 2. Tell the Room to start the game.
-        room.startGame();
+        return room.startGame();
     }
 
     /**
@@ -83,19 +84,7 @@ class GameManager {
      * @param {*} socketID 
      * @returns 
      */
-    //if a player is not in a room return a false message
-    getRoomState(socketID) {
-        let state = {
-            players: [],
-            settings: null,
-            state: null,
-            roles: {
-                host: playerRoom.host.username, //set to host username
-                playing: [playerRoom.currentlyPlaying, playerRoom.currentlyPlaying] / [null], //set to people playing
-                voting: [playerRoom.voting, playerRoom.voting, playerRoom.voting, playerRoom.voting], //set to people voting
-            }
-        };
-
+    getRoom(socketID) {
         let playerRoom = null;
         for (let room of this.rooms) {
             for (let player of room.players) {
@@ -120,7 +109,7 @@ class GameManager {
         if (playerRoom == null) { //if a player is not in a room return a false message
             return {success: false, message: "USER NOT IN ROOM"};
         }
-        return playerRoom.getStrippedStatus();
+        return playerRoom.getStrippedStatus(socketID);
     }
 
     /**
@@ -148,7 +137,7 @@ class GameManager {
                 if (player.username.toLowerCase() == username.toLowerCase()) {
                     return false;
                 }
-            }
+            } 
         }
         return true;
     }
@@ -166,7 +155,7 @@ class Bracket {
     /**
      * Construct a Bracket from a list of players
      * Is stored in the .bracket variable.
-     * @param {*} players 
+     * @param {*} players
      */
     constructor (players) {
         this.players = players;
@@ -179,18 +168,29 @@ class Bracket {
                 pairs.push([players[i], players[i + 1]]);
             }
         }
-        if (pairs.length % 2 == 1) {
+        if (players.length % 2 == 1) {
             pairs.unshift(pairs.pop());
+        }
+        if (Bracket.roundBool) {
+            Bracket.roundBool = false;
+            this.maxRounds = determineRounds(players.length);
+            Bracket.roundBool = true;
         }
         this.bracket = this.buildBracket(pairs);
     }
 
+    /**
+     * Build the template of a bracket and any associated
+     * variables.
+     * @param {*} pairs 
+     * @returns 
+     */
     buildBracket(pairs) {
+        this.winner = null;
         return {
             rounds: {
                 1: pairs,
             },
-            winner: null,
             history: {
                 "orig": pairs
             }
@@ -204,6 +204,10 @@ class Bracket {
      * @param {*} winner 
      */
     playNextMatchup(roundNumber, matchup, winner) {
+        if (this.winner != null) {
+            return false;
+        }
+
         // Default winner for bye
         if (matchup.length == 1) {
             winner = matchup[0];
@@ -216,14 +220,14 @@ class Bracket {
         this.bracket.history[roundNumber].push(matchup);
 
         // Update the bracket
-        if (this.bracket.rounds[roundNumber].length == 1) {
-            this.bracket.winner = winner;
+        if (this.bracket.rounds[roundNumber].length == 1) { // Assumes that if there is only one pair in this round, this is the finals.
+            this.winner = winner;
         } else {
-            if (!Object.keys(this.bracket.rounds).includes(String(Number(roundNumber) + 1))) {
-                this.bracket.rounds[Number(roundNumber) + 1] = [];
+            if (!Object.keys(this.bracket.rounds).includes(String(Number(roundNumber)+1))) {
+                this.bracket.rounds[Number(roundNumber)+1] = [];
             }
-            this.bracket.rounds[Number(roundNumber) + 1].push([winner]);
-            this.reconstruct(this.bracket.rounds[Number(roundNumber) + 1]);
+            this.bracket.rounds[Number(roundNumber)+1].push([winner]);
+            this.reconstruct(this.bracket.rounds[Number(roundNumber)+1]);
         }
     }
 
@@ -261,10 +265,6 @@ class Bracket {
      * @returns {Array<Player>} [matchup, round]
      */
     getNextMatchup() {
-        if (this.bracket == undefined) {
-            return false;
-        }
-
         let nextMatchup = null;
         for (let round of Object.keys(this.bracket.rounds)) {
             let matchups = this.bracket.rounds[round];
@@ -272,14 +272,13 @@ class Bracket {
                 this.bracket.history[round] = [];
             }
             let matchupHistory = this.bracket.history[round];
-
+            
             for (let matchup of matchups) {
                 if (!matchupHistory.includes(matchup)) { // If this matchup has not been played yet for that round
                     nextMatchup = [matchup, round];
                     break;
                 }
             }
-
             if (nextMatchup != null) {
                 break;
             }
@@ -287,7 +286,26 @@ class Bracket {
         return nextMatchup;
     }
 }
-
+Bracket.roundBool = true;
+Bracket.maxRounds = {};
+function determineRounds(length) {
+    if (Bracket.maxRounds[length] != undefined) {
+        return Bracket.maxRounds[length];
+    }
+    let players = [];
+    for (let i = 0; i < length; i++) {
+        players.push(i);
+    }
+    let b = new Bracket(players);
+    let i = 0;
+    while (b.winner == null) {
+        let res = b.getNextMatchup();
+        b.playNextMatchup(res[1], res[0], res[0][0]);
+        i++;
+    }
+    Bracket.maxRounds[length] = i;
+    return i;
+}
 
 /**
  * The Room keeps track of all current logged in players,
@@ -297,8 +315,9 @@ class Bracket {
  * in the room at any time.
  */
 class Room {
-    constructor(username, password, socketID) {
-        this.host = new Player(username, socketID);
+    constructor (username, password, socketID){
+        console.log("NEW ROOM", password)
+        this.host = new Player (username, socketID);
         this.password = password;
         this.settings = {
             maxPlayers: 32,
@@ -306,24 +325,32 @@ class Room {
             clipDuration: 30,
             dcTime: 60,
             voteTime: 90,
-            roundTime: 10,
+            roundTime: 60,
             messageTime: 7,
+            resultsTime: 20
         }
         this.players = [this.host];
-        this.possibleStates = ["setting", "playing", "message", "paused", "voting", "result"];
+        this.possibleStates = ["setting", "playing", "message", "voting", "result"];
         
         // GAME VARS
         this.bracket = null;
         this.roundStatus = {
             state: "setting",
-            currentlyPlaying: null,
-            voting: null,
+            bracketLevel: null,
+
+            timer: null,
             maxRounds: null,
             currentRound: null,
+
+            currentlyPlaying: null,
+            voting: null,
+            
             submittedVideos: null,
-            timer: null,
             votes: null,
+            results: null,
+
             winner: null,
+            time: null,
             messageActive: false,
             message: {
                 header: null,
@@ -345,41 +372,173 @@ class Room {
         // Initialize the bracket
         this.bracket = new Bracket(this.players);
         this.roundStatus.maxRounds = this.bracket.maxRounds;
-        this.roundStatus.currentRound = 1;
-        // TODO: Initialize Timer
-        // this.roundStatus.timer = new Timer();
+        this.roundStatus.currentRound = 0;
+        // Initialize Timer
+        this.roundStatus.timer = new Timer();
 
         // INITIALIZE THE GAME
         console.log("STARTING GAME");
-        // Start GameplayLoop()
-        this.mainGameplayLoop();
+        if (this.players.length < 3) {
+            return {success: false, message: "NOT ENOUGH PLAYERS. NEED ATLEAST 3."};
+        } else {
+            // Start GameplayLoop()
+            this.mainGameplayLoop();
+
+            return {success: true};
+        }
     }
 
+    /**
+     * Display a pause modal for a message.
+     * @param {*} header 
+     * @param {*} message 
+     * @param {*} time 
+     */
+    displayMessage(header, message, time=-1, state="message") {
+        this.roundStatus.state = state;
+        this.roundStatus.messageActive = true;
+        this.roundStatus.time = time;
+        this.roundStatus.message = {
+            header: header,
+            message: message
+        };
+    }
+
+    /**
+     * Hide the Pause Modal on the client side.
+     */
+    hideMessage() {
+        this.roundStatus.messageActive = false;
+        this.roundStatus.message = {
+            header: null,
+            message: null
+        }
+    }
+
+    /**
+     * By utilizing timers, start the gameplay loop (essentially keeping track of the state at all times.)
+     */
     mainGameplayLoop() {
         // Get the next matchup, set the currentPlaying, voting, based on the nextMatchup
         this.updateByNextMatchup();
 
-        // Display the next matchup to the client.
-        this.roundStatus.messageActive = true;
-        this.roundStatus.message = {
-            header: "HEADER",
-            message: "MESSAGE"
-        };
-        
-        // Set the timer, to the message time
-        setInterval(() => {
-            this.roundStatus.messageActive = false;
-        }, this.settings.messageTime * 1000);
+        let message = "ERROR";
+        if (this.roundStatus.currentlyPlaying.length == 1) {
+            message = "This is a bye round for " + this.roundStatus.currentlyPlaying[0].username + ". Forwarding round.....";
+            // SKIP ROUND LOGIC
+        } else if (this.roundStatus.currentlyPlaying.length == 2) {
+            message = "This round will be " + this.roundStatus.currentlyPlaying[0].username + " vs. " + this.roundStatus.currentlyPlaying[1].username;
+        }
 
+        // Display the next matchup to the client for the message time.
+        this.displayMessage("Round " + this.roundStatus.currentRound, message, this.settings.messageTime);
+        this.roundStatus.timer.setTime(this.settings.messageTime);
+        this.roundStatus.timer.addToQueue(() => {
+            this.displayMessage("Round " + this.roundStatus.currentRound, message, this.roundStatus.timer.time);
+        });
+        this.roundStatus.timer.addToQueue0(() => {
+            this.hideMessage();
+            console.log("WAITING FOR SUBMISSIONS")
+            
+            // Change the state to the video selection screen
+            this.roundStatus.state = "playing";
+            this.roundStatus.timer.setTime(this.settings.roundTime);
+            this.roundStatus.timer.addToQueue(() => {
+                this.roundStatus.time = this.roundStatus.timer.time;
+                //SHORT CUT CHECK FOR VIDEOS
+            });
+            this.roundStatus.timer.addToQueue0(() => {
+                console.log("WAITING FOR VOTES")
+                // RETRIEVE SUBMITTED VIDEOS
+                if (this.roundStatus.submittedVideos == null || this.roundStatus.submittedVideos.length == 0) {
+                    // No one submitted in time
 
+                } else if (this.roundStatus.submittedVideos.length == 1) {
+                    // Default winner
 
+                } else {
+                    // Two videos to review, start voting screen
+                    this.roundStatus.state = "voting";
 
+                }
+                // Change the state to the voting process
+                this.roundStatus.state = "voting"; // DEBUG
+                this.roundStatus.timer.setTime(this.settings.voteTime);
+                this.roundStatus.timer.addToQueue(() => {
+                    this.roundStatus.time = this.roundStatus.timer.time;
+                    // SHORTCUT CHECK FOR VOTES
+                });
+                this.roundStatus.timer.addToQueue0(() => {
+                    console.log("SHOWING RESULTS")
+                    // RETRIEVE SUBMITTED VOTES
+                    // CHECK THE VOTES, DECLARE THE WINNER
+
+                    // IF VOTES EQUAL > DISPLAY MESSAGE FOR RANDOM WINNER
+                    let WINNER = this.roundStatus.currentlyPlaying[0/1];
+                    console.log(this.roundStatus.bracketLevel);
+                    this.bracket.playNextMatchup(this.roundStatus.bracketLevel, this.roundStatus.currentlyPlaying, WINNER);
+                    this.roundStatus.results = {
+                        winner: {
+                            username: "user",
+                            votes: "votes"
+                        },
+                        loser: {
+                            username: "user2",
+                            votes: "votes2"
+                        }
+                    }
+                    // CHECK FOR WINNER
+                    
+                    // Change the state to the results screen
+                    this.roundStatus.state = "results"; // DEBUG
+                    this.roundStatus.timer.setTime(this.settings.resultsTime);
+                    this.roundStatus.timer.addToQueue(() => {
+                        this.roundStatus.time = this.roundStatus.timer.time;
+                    });
+                    this.roundStatus.timer.addToQueue0(() => {
+                        console.log("RESTARTING LOOP...")
+                        // FINISHED LOOP
+                        // CHECK FOR WINNER
+                        // POSSIBLE RESET OF ROUND?
+                        if ("thereisawinner" == false) {
+
+                        } else {
+                            this.mainGameplayLoop();
+                        }
+                    });
+                    this.roundStatus.timer.startTime();
+                });
+                this.roundStatus.timer.startTime();
+            });
+            this.roundStatus.timer.startTime();
+        });
+        this.roundStatus.timer.startTime();
     }
 
+    /**
+     * TODO: Handling Disconnect
+     * On the event of a player disconnect, handle this through the game Manager
+     * By default, end the game and restart it if the player does not return for a while
+     * If the player returns, continue the game.
+     * 
+     * Future feature: reconstructing the bracket. Calculate all the players who
+     * have yet to play a round and replace the bracket with a temporary one
+     * 
+     * Everyone else becomes a voter.
+     * 
+     * On the event of a host disconnect, close the room after an allotted time,
+     * else have the host rejoin.
+     */
+
+    /**
+     * TODO
+     */
     updateByNextMatchup() {
         let matchup = this.bracket.getNextMatchup();
-        this.roundStatus.currentRound = matchup[1];
+        console.log("CURRENT BRACKET", this.bracket.bracket.rounds);
+        this.roundStatus.currentRound++;
         this.roundStatus.currentlyPlaying = matchup[0];
+        this.roundStatus.bracketLevel = matchup[1];
         this.roundStatus.voting = [];
 
         let sockets = this.roundStatus.currentlyPlaying.map((player) => player.socketID);
@@ -390,19 +549,74 @@ class Room {
         }
     }
 
-    incrementState() {
+    /**
+     * A client-based function where someone can submit a video ID to a certain socket if
+     * they are currently playing.
+     */
+    submitVideo (socketID, videoID) {
+        if (this.roundStatus.submittedVideos == null) {
+            this.roundStatus.submittedVideos = [];
+        }
+
+        // PERFORM CHECK FOR IF STATE == PLAYING AND SOCKETID BELONGS TO PLAYER
+        // FETCH USERNAME
+        let username = null; //TODO
         
+        this.roundStatus.submittedVideos.push({
+            socketID,
+            username,
+            videoID
+        });
+
+    }
+
+    /**
+     * A client-based function where someone can submit a vote for a certain video.
+     */
+    submitVote (socketID, videoID) {
+        if (this.roundStatus.votes == null) {
+            this.roundStatus.votes = [];
+        }
+
+        // PERFORM CHECK FOR STATE == VOTING AND SOCKETID BELONGS TO VOTER
+        // APPLY VOTE BY EXAMINING SUBMITTED VIDEO ID
+
+        this.roundStatus.votes.push({
+            socketID: "FROM",
+            videoID: videoID,
+            forID: "FOR"
+        });
     }
 
     /**
      * Get a stripped version of this room's status to send to
      * the client.
      */
-    getStrippedStatus() {
+    getStrippedStatus(socketID) {
         let players = [];
         for (let player of this.players) {
             players.push(player.username);
         }
+        let role = "DEFAULT";
+        // TODO DETERMINE ROLE
+        if (this.roundStatus.state == "playing") {
+            if (this.roundStatus.currentlyPlaying.map((player) => player.socketID).includes(socketID)) {
+                role = "player";
+                // TODO CHECK SUBMISSION, IF SUBMITTED THEN DISPLAY MESSAGE
+            } else {
+                role = "waiter";
+                this.displayMessage("WAIT YOUR TURN!", "Relax while the players submit their videos...", this.roundStatus.time, "playing")
+            }
+        } else if (this.roundStatus.state == "voting") {
+            if (this.roundStatus.voting.map((player) => player.socketID).includes(socketID)) {
+                role = "voter";
+                // TODO CHECK VOTE, IF SUBMITTED THEN DISPLAY VOTE
+            } else {
+                role = "waiter";
+                this.displayMessage("WAIT FOR THE RESULTS!", "Well done! Good luck as the votes are cast on the better music choice...", this.roundStatus.time, "voting");
+            }
+        }
+
         let status = {
             host: this.host.username,
             players,
@@ -410,7 +624,9 @@ class Room {
             currentPlaying: this.roundStatus.currentlyPlaying && this.roundStatus.currentlyPlaying.map((player) => player.username),
             voting: this.roundStatus.voting && this.roundStatus.voting.map((player) => player.username),
             messageActive: this.roundStatus.messageActive,
-            message: this.roundStatus.message
+            message: this.roundStatus.message,
+            time: this.roundStatus.time,
+            "role": role
         };
         return status;
     }
@@ -422,27 +638,18 @@ class Room {
  * All relative socket functions are held in the Player as well.
  */
 class Player {
-    constructor(username, socketID) {
+    constructor (username, socketID){
         this.username = username;
         this.socketID = socketID;
     }
 }
+
+
 /**
  * Timer Class
+ * Keeps track of functions and automates setInterval timer.
  * 
- * On construct, keep track of a time variable. 
- * Have a start function.
- * Have a stop function.
- * Have a reset function.
- * Have a setToTime function.
- * Have a executeEventAt0 function (takes in a function and adds it to a queue of functions to execute).
- * Have a executeEverySecond function (takes in a function and adds it to a queue of functions to execute).
- * 
- * Use setInterval to update the Timer.
- * To stop a setInterval timer
- * 
- * let timer = setInterval(() => console.log("This happens every second"), 1000);
- * clearInterval(timer);
+ * @author Harjyot Sidhu
  */
 class Timer {
     constructor(timeT = 0) {
@@ -454,38 +661,42 @@ class Timer {
     }
     startTime() {
         this.timer = setInterval(() => {
-            if (time == 0) {
-                for (let Func of this.queueEx0) {
+            if (this.time == 0) {
+                this.stopTime();
+                let dummyQueue = this.queueEx0;
+                this.queueEx0 = [];
+                this.queueFunc = [];
+                for (let Func of dummyQueue) {
                     Func();
                 }
-                clearInterval(this.timer);
-                this.queueEx0 = [];
+                return;
             }
-            this.time -= 1;
-
             for (let Func of this.queueFunc) {
                 Func();
             }
-            this.queueFunc = [];
+            this.time -= 1;
         }, 1000);
     }
     stopTime() {
         clearInterval(this.timer);
+        this.timer = null;
     }
     resetTime() {
         this.time = 0;
     }
-    setTotime(setTime) {
-        this.time = setTime;
+    setTime(time) {
+        this.time = time;
     }
-    addToqueue0(Func0) {
-        this.queueEx0.push(Func0);
+    addToQueue0(func) {
+        this.queueEx0.push(func);
     }
-    addToqueue(FunQ) {
-        this.queueFunc.push(FunQ);
+    addToQueue(func) {
+        this.queueFunc.push(func);
     }
-
 }
+
+
+
 module.exports = {
     GameManager, Room, Player
 }
