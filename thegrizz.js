@@ -56,7 +56,7 @@ class GameManager {
             room.addPlayer(username, socketID);
             return room.settings;
         } else {
-            return {success: false, message: "PASSWORD IS INCORRECT."}
+            return { success: false, message: "PASSWORD IS INCORRECT." }
         }
     }
 
@@ -83,7 +83,19 @@ class GameManager {
      * @param {*} socketID 
      * @returns 
      */
-    getRoom(socketID) {
+    //if a player is not in a room return a false message
+    getRoomState(socketID) {
+        let state = {
+            players: [],
+            settings: null,
+            state: null,
+            roles: {
+                host: playerRoom.host.username, //set to host username
+                playing: [playerRoom.currentlyPlaying, playerRoom.currentlyPlaying] / [null], //set to people playing
+                voting: [playerRoom.voting, playerRoom.voting, playerRoom.voting, playerRoom.voting], //set to people voting
+            }
+        };
+
         let playerRoom = null;
         for (let room of this.rooms) {
             for (let player of room.players) {
@@ -136,7 +148,7 @@ class GameManager {
                 if (player.username.toLowerCase() == username.toLowerCase()) {
                     return false;
                 }
-            } 
+            }
         }
         return true;
     }
@@ -154,7 +166,7 @@ class Bracket {
     /**
      * Construct a Bracket from a list of players
      * Is stored in the .bracket variable.
-     * @param {*} players
+     * @param {*} players 
      */
     constructor (players) {
         this.players = players;
@@ -170,26 +182,15 @@ class Bracket {
         if (pairs.length % 2 == 1) {
             pairs.unshift(pairs.pop());
         }
-        if (Bracket.roundBool) {
-            Bracket.roundBool = false;
-            this.maxRounds = determineRounds(players.length);
-            Bracket.roundBool = true;
-        }
         this.bracket = this.buildBracket(pairs);
     }
 
-    /**
-     * Build the template of a bracket and any associated
-     * variables.
-     * @param {*} pairs 
-     * @returns 
-     */
     buildBracket(pairs) {
-        this.winner = null;
         return {
             rounds: {
                 1: pairs,
             },
+            winner: null,
             history: {
                 "orig": pairs
             }
@@ -203,10 +204,6 @@ class Bracket {
      * @param {*} winner 
      */
     playNextMatchup(roundNumber, matchup, winner) {
-        if (this.winner != null) {
-            return false;
-        }
-
         // Default winner for bye
         if (matchup.length == 1) {
             winner = matchup[0];
@@ -219,14 +216,14 @@ class Bracket {
         this.bracket.history[roundNumber].push(matchup);
 
         // Update the bracket
-        if (this.bracket.rounds[roundNumber].length == 1) { // Assumes that if there is only one pair in this round, this is the finals.
-            this.winner = winner;
+        if (this.bracket.rounds[roundNumber].length == 1) {
+            this.bracket.winner = winner;
         } else {
-            if (!Object.keys(this.bracket.rounds).includes(String(Number(roundNumber)+1))) {
-                this.bracket.rounds[Number(roundNumber)+1] = [];
+            if (!Object.keys(this.bracket.rounds).includes(String(Number(roundNumber) + 1))) {
+                this.bracket.rounds[Number(roundNumber) + 1] = [];
             }
-            this.bracket.rounds[Number(roundNumber)+1].push([winner]);
-            this.reconstruct(this.bracket.rounds[Number(roundNumber)+1]);
+            this.bracket.rounds[Number(roundNumber) + 1].push([winner]);
+            this.reconstruct(this.bracket.rounds[Number(roundNumber) + 1]);
         }
     }
 
@@ -264,6 +261,10 @@ class Bracket {
      * @returns {Array<Player>} [matchup, round]
      */
     getNextMatchup() {
+        if (this.bracket == undefined) {
+            return false;
+        }
+
         let nextMatchup = null;
         for (let round of Object.keys(this.bracket.rounds)) {
             let matchups = this.bracket.rounds[round];
@@ -271,13 +272,14 @@ class Bracket {
                 this.bracket.history[round] = [];
             }
             let matchupHistory = this.bracket.history[round];
-            
+
             for (let matchup of matchups) {
                 if (!matchupHistory.includes(matchup)) { // If this matchup has not been played yet for that round
                     nextMatchup = [matchup, round];
                     break;
                 }
             }
+
             if (nextMatchup != null) {
                 break;
             }
@@ -285,26 +287,7 @@ class Bracket {
         return nextMatchup;
     }
 }
-Bracket.roundBool = true;
-Bracket.maxRounds = {};
-function determineRounds(length) {
-    if (Bracket.maxRounds[length] != undefined) {
-        return Bracket.maxRounds[length];
-    }
-    let players = [];
-    for (let i = 0; i < length; i++) {
-        players.push(i);
-    }
-    let b = new Bracket(players);
-    let i = 0;
-    while (b.winner == null) {
-        let res = b.getNextMatchup();
-        b.playNextMatchup(res[1], res[0], res[0][0]);
-        i++;
-    }
-    Bracket.maxRounds[length] = i;
-    return i;
-}
+
 
 /**
  * The Room keeps track of all current logged in players,
@@ -314,8 +297,8 @@ function determineRounds(length) {
  * in the room at any time.
  */
 class Room {
-    constructor (username, password, socketID){
-        this.host = new Player (username, socketID);
+    constructor(username, password, socketID) {
+        this.host = new Player(username, socketID);
         this.password = password;
         this.settings = {
             maxPlayers: 32,
@@ -439,12 +422,70 @@ class Room {
  * All relative socket functions are held in the Player as well.
  */
 class Player {
-    constructor (username, socketID){
+    constructor(username, socketID) {
         this.username = username;
         this.socketID = socketID;
     }
 }
+/**
+ * Timer Class
+ * 
+ * On construct, keep track of a time variable. 
+ * Have a start function.
+ * Have a stop function.
+ * Have a reset function.
+ * Have a setToTime function.
+ * Have a executeEventAt0 function (takes in a function and adds it to a queue of functions to execute).
+ * Have a executeEverySecond function (takes in a function and adds it to a queue of functions to execute).
+ * 
+ * Use setInterval to update the Timer.
+ * To stop a setInterval timer
+ * 
+ * let timer = setInterval(() => console.log("This happens every second"), 1000);
+ * clearInterval(timer);
+ */
+class Timer {
+    constructor(timeT = 0) {
+        this.time = timeT;
+        this.queueEx0 = [];
+        this.queueFunc = [];
+        this.timer = null;
 
+    }
+    startTime() {
+        this.timer = setInterval(() => {
+            if (time == 0) {
+                for (let Func of this.queueEx0) {
+                    Func();
+                }
+                clearInterval(this.timer);
+                this.queueEx0 = [];
+            }
+            this.time -= 1;
+
+            for (let Func of this.queueFunc) {
+                Func();
+            }
+            this.queueFunc = [];
+        }, 1000);
+    }
+    stopTime() {
+        clearInterval(this.timer);
+    }
+    resetTime() {
+        this.time = 0;
+    }
+    setTotime(setTime) {
+        this.time = setTime;
+    }
+    addToqueue0(Func0) {
+        this.queueEx0.push(Func0);
+    }
+    addToqueue(FunQ) {
+        this.queueFunc.push(FunQ);
+    }
+
+}
 module.exports = {
     GameManager, Room, Player
 }
