@@ -6,6 +6,8 @@
  * @author Harjyot Sidhu, Pirjot Atwal
  */
 
+const { response } = require("express");
+
 /**
  * The GameManager keeps track of a list of rooms
  * and any facilitation that the server needs to run
@@ -76,6 +78,15 @@
         }
         // 2. Tell the Room to start the game.
         return room.startGame();
+    }
+
+    submitVideo(socketID, video) {
+        let room = this.getRoom(socketID);
+        if (room == null) {
+            return {success: false, message: "ROOM DOES NOT EXIST."};
+        }
+        // Submit Video
+        return room.submitVideo(socketID, video);
     }
 
     /**
@@ -394,14 +405,14 @@ class Room {
      * @param {*} message 
      * @param {*} time 
      */
-    displayMessage(header, message, time=-1, state="message") {
-        this.roundStatus.state = state;
+    displayMessage(header, message, time) {
         this.roundStatus.messageActive = true;
-        this.roundStatus.time = time;
+        this.roundStatus.state = "message";
         this.roundStatus.message = {
             header: header,
             message: message
         };
+        this.roundStatus.time = time;
     }
 
     /**
@@ -419,100 +430,192 @@ class Room {
      * By utilizing timers, start the gameplay loop (essentially keeping track of the state at all times.)
      */
     mainGameplayLoop() {
-        // Get the next matchup, set the currentPlaying, voting, based on the nextMatchup
         this.updateByNextMatchup();
 
-        let message = "ERROR";
-        if (this.roundStatus.currentlyPlaying.length == 1) {
-            message = "This is a bye round for " + this.roundStatus.currentlyPlaying[0].username + ". Forwarding round.....";
+        let thisRoom = this; // Bypass Binding
+
+        // Bye Round Check - If entering from a by round, 
+
+        // CREATE INITIAL MESSAGE
+        let message = "ERROR with BRACKET PLAYING PAIRS";
+        if (thisRoom.roundStatus.currentlyPlaying.length == 1) {
+            message = "This is a bye round for " + thisRoom.roundStatus.currentlyPlaying[0].username + ". Forwarding round.....";
             // SKIP ROUND LOGIC
-        } else if (this.roundStatus.currentlyPlaying.length == 2) {
-            message = "This round will be " + this.roundStatus.currentlyPlaying[0].username + " vs. " + this.roundStatus.currentlyPlaying[1].username;
+            thisRoom.displayMessage("Round " + thisRoom.roundStatus.currentRound, message, thisRoom.settings.messageTime);
+            thisRoom.roundStatus.timer.setTime(thisRoom.settings.messageTime);
+            thisRoom.roundStatus.timer.addToQueue(() => {
+                thisRoom.displayMessage("Round " + thisRoom.roundStatus.currentRound, message, thisRoom.roundStatus.timer.time);
+            });
+            thisRoom.roundStatus.timer.addToQueue0(() => {
+                thisRoom.hideMessage();
+                thisRoom.bracket.playNextMatchup(thisRoom.roundStatus.bracketLevel, thisRoom.roundStatus.currentlyPlaying, thisRoom.roundStatus.currentlyPlaying[0]);
+                thisRoom.mainGameplayLoop();
+            });
+            thisRoom.roundStatus.timer.startTime();
+            return;
+        } else if (thisRoom.roundStatus.currentlyPlaying.length == 2) {
+            message = "This round will be " + thisRoom.roundStatus.currentlyPlaying[0].username + " vs. " + thisRoom.roundStatus.currentlyPlaying[1].username;
+        }
+        
+        /**
+         * TODO
+         */
+        function showSubmit() {
+            thisRoom.hideMessage();
+            console.log("WAITING FOR SUBMISSIONS");
+            
+            // Change the state to the video selection screen
+            thisRoom.roundStatus.state = "playing";
+            thisRoom.roundStatus.timer.setTime(thisRoom.settings.roundTime);
+            thisRoom.roundStatus.timer.addToQueue(() => {
+                thisRoom.roundStatus.time = thisRoom.roundStatus.timer.time;
+                //SHORT CUT CHECK FOR VIDEOS
+            });
+            thisRoom.roundStatus.timer.addToQueue0(showVoting);
+            thisRoom.roundStatus.timer.startTime();
+        }
+
+        function showVoting() {
+            console.log("WAITING FOR VOTES");
+            // RETRIEVE SUBMITTED VIDEOS
+            if (thisRoom.roundStatus.submittedVideos == null || thisRoom.roundStatus.submittedVideos.length == 0) {
+                // No one submitted in time
+                let message = "Neither player submitted a video in the time allotted... Ending Game."
+                // SKIP ROUND LOGIC
+                thisRoom.displayMessage("Round " + thisRoom.roundStatus.currentRound, message, thisRoom.settings.messageTime);
+                thisRoom.roundStatus.timer.setTime(thisRoom.settings.messageTime);
+                thisRoom.roundStatus.timer.addToQueue(() => {
+                    thisRoom.displayMessage("Round " + thisRoom.roundStatus.currentRound, message, thisRoom.roundStatus.timer.time);
+                });
+                thisRoom.roundStatus.timer.addToQueue0(() => {
+                    thisRoom.hideMessage();
+                    thisRoom.roundStatus.state = "ending";
+                    restartLogic();
+                });
+                thisRoom.roundStatus.timer.startTime();
+                return;
+            } else if (thisRoom.roundStatus.submittedVideos.length == 1) {
+                // Default winner
+                let message = "Only one player submitted a video... Automatically granting them the win.";
+                thisRoom.roundStatus.votes = [{
+                    forID: thisRoom.roundStatus.submittedVideos[0].socketID
+                }];
+                // SKIP ROUND LOGIC
+                thisRoom.displayMessage("Round " + thisRoom.roundStatus.currentRound, message, thisRoom.settings.messageTime);
+                thisRoom.roundStatus.timer.setTime(thisRoom.settings.messageTime);
+                thisRoom.roundStatus.timer.addToQueue(() => {
+                    thisRoom.displayMessage("Round " + thisRoom.roundStatus.currentRound, message, thisRoom.roundStatus.timer.time);
+                });
+                thisRoom.roundStatus.timer.addToQueue0(showResults);
+                thisRoom.roundStatus.timer.startTime();
+                return;
+            }  else {
+                // Two videos to review, start voting screen
+                // Change the state to the voting process
+                thisRoom.roundStatus.state = "voting"; // DEBUG
+                thisRoom.roundStatus.timer.setTime(thisRoom.settings.voteTime);
+                thisRoom.roundStatus.timer.addToQueue(() => {
+                    thisRoom.roundStatus.time = thisRoom.roundStatus.timer.time;
+                    // SHORTCUT CHECK FOR VOTES
+                });
+                thisRoom.roundStatus.timer.addToQueue0(showResults);
+                thisRoom.roundStatus.timer.startTime();
+            }
+            
+        }
+
+        function showResults() {
+            thisRoom.hideMessage();
+            console.log("SHOWING RESULTS");
+            // RETRIEVE SUBMITTED VOTES
+            // CHECK THE VOTES, DECLARE THE WINNER
+            let player1 = thisRoom.roundStatus.currentlyPlaying[0];
+            let player2 = thisRoom.roundStatus.currentlyPlaying[1];
+            let count1 = 0;
+            let count2 = 0;
+            if (thisRoom.roundStatus.votes != null) {
+                for (let vote of thisRoom.roundStatus.votes) {
+                    if (vote.forID == player1.socketID) {
+                        count1++;
+                    } else if (vote.forID == player2.socketID) {
+                        count2++;
+                    }
+                }
+            }
+            // IF VOTES EQUAL > DISPLAY MESSAGE FOR RANDOM WINNER
+            let winner = null;
+            if (count1 > count2) {
+                winner = player1;
+            } else if (count1 == count2) {
+                winner = "tie";
+            } else {
+                winner = player2;
+            }
+            if (winner == "tie") { // RANDOMLY DETERMINE WINNER
+                if (Math.floor(Math.random() * 2) == 0) {
+                    winner = player1;
+                } else {
+                    winner = player2;
+                }
+                thisRoom.roundStatus.results = {
+                    tie: true,
+                    winner: {
+                        username: winner.username,
+                    },
+                    loser: {
+                        username: (winner == player1 ? player2 : player1).username
+                    }
+                }
+            } else {
+                thisRoom.bracket.playNextMatchup(thisRoom.roundStatus.bracketLevel, thisRoom.roundStatus.currentlyPlaying, winner);
+                thisRoom.roundStatus.results = {
+                    winner: {
+                        username: winner.username,
+                        votes: winner == player1 ? count1 : count2
+                    },
+                    loser: {
+                        username: (winner == player1 ? player2 : player1).username,
+                        votes: winner == player1 ? count2 : count1
+                    },
+                    tie: false
+                }
+            }
+            
+            // Change the state to the results screen
+            thisRoom.roundStatus.state = "results";
+            thisRoom.roundStatus.timer.setTime(thisRoom.settings.resultsTime);
+            thisRoom.roundStatus.timer.addToQueue(() => {
+                thisRoom.roundStatus.time = thisRoom.roundStatus.timer.time;
+            });
+            thisRoom.roundStatus.timer.addToQueue0(restartLogic);
+            thisRoom.roundStatus.timer.startTime();
+        }
+
+        function restartLogic() {
+            console.log("RESTARTING LOOP...")
+            // FINISHED LOOP
+            // CHECK FOR WINNER
+            // POSSIBLE RESET OF ROUND?
+            if ("thereisawinner" == false) {
+                // PRESENT WINNER SCREEN IN MESSAGE
+                thisRoom.roundStatus.state = "setting";
+            } else if (thisRoom.roundStatus.state = "exiting") {
+                // END THE GAME, RESET THE STATE TO SETTING
+                thisRoom.roundStatus.state = "setting";
+                // PERFORM ANY OTHER RESETS NEEDED
+            } else {
+                thisRoom.mainGameplayLoop();
+            }
         }
 
         // Display the next matchup to the client for the message time.
-        this.displayMessage("Round " + this.roundStatus.currentRound, message, this.settings.messageTime);
-        this.roundStatus.timer.setTime(this.settings.messageTime);
-        this.roundStatus.timer.addToQueue(() => {
-            this.displayMessage("Round " + this.roundStatus.currentRound, message, this.roundStatus.timer.time);
+        thisRoom.displayMessage("Round " + thisRoom.roundStatus.currentRound, message, thisRoom.settings.messageTime);
+        thisRoom.roundStatus.timer.setTime(thisRoom.settings.messageTime);
+        thisRoom.roundStatus.timer.addToQueue(() => {
+            thisRoom.displayMessage("Round " + thisRoom.roundStatus.currentRound, message, thisRoom.roundStatus.timer.time);
         });
-        this.roundStatus.timer.addToQueue0(() => {
-            this.hideMessage();
-            console.log("WAITING FOR SUBMISSIONS")
-            
-            // Change the state to the video selection screen
-            this.roundStatus.state = "playing";
-            this.roundStatus.timer.setTime(this.settings.roundTime);
-            this.roundStatus.timer.addToQueue(() => {
-                this.roundStatus.time = this.roundStatus.timer.time;
-                //SHORT CUT CHECK FOR VIDEOS
-            });
-            this.roundStatus.timer.addToQueue0(() => {
-                console.log("WAITING FOR VOTES")
-                // RETRIEVE SUBMITTED VIDEOS
-                if (this.roundStatus.submittedVideos == null || this.roundStatus.submittedVideos.length == 0) {
-                    // No one submitted in time
-
-                } else if (this.roundStatus.submittedVideos.length == 1) {
-                    // Default winner
-
-                } else {
-                    // Two videos to review, start voting screen
-                    this.roundStatus.state = "voting";
-
-                }
-                // Change the state to the voting process
-                this.roundStatus.state = "voting"; // DEBUG
-                this.roundStatus.timer.setTime(this.settings.voteTime);
-                this.roundStatus.timer.addToQueue(() => {
-                    this.roundStatus.time = this.roundStatus.timer.time;
-                    // SHORTCUT CHECK FOR VOTES
-                });
-                this.roundStatus.timer.addToQueue0(() => {
-                    console.log("SHOWING RESULTS")
-                    // RETRIEVE SUBMITTED VOTES
-                    // CHECK THE VOTES, DECLARE THE WINNER
-
-                    // IF VOTES EQUAL > DISPLAY MESSAGE FOR RANDOM WINNER
-                    let WINNER = this.roundStatus.currentlyPlaying[0/1];
-                    console.log(this.roundStatus.bracketLevel);
-                    this.bracket.playNextMatchup(this.roundStatus.bracketLevel, this.roundStatus.currentlyPlaying, WINNER);
-                    this.roundStatus.results = {
-                        winner: {
-                            username: "user",
-                            votes: "votes"
-                        },
-                        loser: {
-                            username: "user2",
-                            votes: "votes2"
-                        }
-                    }
-                    // CHECK FOR WINNER
-                    
-                    // Change the state to the results screen
-                    this.roundStatus.state = "results"; // DEBUG
-                    this.roundStatus.timer.setTime(this.settings.resultsTime);
-                    this.roundStatus.timer.addToQueue(() => {
-                        this.roundStatus.time = this.roundStatus.timer.time;
-                    });
-                    this.roundStatus.timer.addToQueue0(() => {
-                        console.log("RESTARTING LOOP...")
-                        // FINISHED LOOP
-                        // CHECK FOR WINNER
-                        // POSSIBLE RESET OF ROUND?
-                        if ("thereisawinner" == false) {
-
-                        } else {
-                            this.mainGameplayLoop();
-                        }
-                    });
-                    this.roundStatus.timer.startTime();
-                });
-                this.roundStatus.timer.startTime();
-            });
-            this.roundStatus.timer.startTime();
-        });
-        this.roundStatus.timer.startTime();
+        thisRoom.roundStatus.timer.addToQueue0(showSubmit);
+        thisRoom.roundStatus.timer.startTime();
     }
 
     /**
@@ -553,21 +656,40 @@ class Room {
      * A client-based function where someone can submit a video ID to a certain socket if
      * they are currently playing.
      */
-    submitVideo (socketID, videoID) {
+    submitVideo (socketID, video) {
         if (this.roundStatus.submittedVideos == null) {
             this.roundStatus.submittedVideos = [];
+        } else {
+            // Replace video if already submitted
+            for (let i = 0; i < this.roundStatus.submittedVideos.length; i++) {
+                if (this.roundStatus.submittedVideos[i].socketID == socketID) {
+                    this.roundStatus.submittedVideos[i].video = video;
+                    return;
+                }
+            }
         }
 
         // PERFORM CHECK FOR IF STATE == PLAYING AND SOCKETID BELONGS TO PLAYER
+        if (this.roundStatus.state != "playing" || !this.roundStatus.currentlyPlaying.map((player) => player.socketID).includes(socketID)) {
+            return {success:false, message: "ERROR IN SUBMITTING VIDEO"};
+        }
         // FETCH USERNAME
-        let username = null; //TODO
-        
+        let player = null;
+        for (let play of this.roundStatus.currentlyPlaying) {
+            if (play.socketID == socketID) {
+                player = play;
+            }
+        }
+        console.log("GOT VIDEO", {
+            socketID,
+            username: player.username,
+            video
+        });
         this.roundStatus.submittedVideos.push({
             socketID,
-            username,
-            videoID
+            username: player.username,
+            video
         });
-
     }
 
     /**
@@ -593,19 +715,21 @@ class Room {
      * the client.
      */
     getStrippedStatus(socketID) {
+        let status = {};
+
         let players = [];
         for (let player of this.players) {
             players.push(player.username);
         }
+
         let role = "DEFAULT";
-        // TODO DETERMINE ROLE
         if (this.roundStatus.state == "playing") {
             if (this.roundStatus.currentlyPlaying.map((player) => player.socketID).includes(socketID)) {
                 role = "player";
                 // TODO CHECK SUBMISSION, IF SUBMITTED THEN DISPLAY MESSAGE
             } else {
                 role = "waiter";
-                this.displayMessage("WAIT YOUR TURN!", "Relax while the players submit their videos...", this.roundStatus.time, "playing")
+                manualDisplay("WAIT YOUR TURN!", "Relax while the players submit their videos...");
             }
         } else if (this.roundStatus.state == "voting") {
             if (this.roundStatus.voting.map((player) => player.socketID).includes(socketID)) {
@@ -613,21 +737,32 @@ class Room {
                 // TODO CHECK VOTE, IF SUBMITTED THEN DISPLAY VOTE
             } else {
                 role = "waiter";
-                this.displayMessage("WAIT FOR THE RESULTS!", "Well done! Good luck as the votes are cast on the better music choice...", this.roundStatus.time, "voting");
+                manualDisplay("WAIT FOR THE RESULTS!", "Well done! Good luck as the votes are cast on the better music choice...");
             }
         }
 
-        let status = {
-            host: this.host.username,
-            players,
-            state: this.roundStatus.state,
-            currentPlaying: this.roundStatus.currentlyPlaying && this.roundStatus.currentlyPlaying.map((player) => player.username),
-            voting: this.roundStatus.voting && this.roundStatus.voting.map((player) => player.username),
-            messageActive: this.roundStatus.messageActive,
-            message: this.roundStatus.message,
-            time: this.roundStatus.time,
-            "role": role
-        };
+        // TODO STRIP VIDEOS, STRIP VOTES, STRIP RESULTS
+
+        // INITIALIZE STATE
+        status.host = this.host.username;
+        status.players = players;
+        status.state = this.roundStatus.state;
+        status.currentPlaying = this.roundStatus.currentlyPlaying && this.roundStatus.currentlyPlaying.map((player) => player.username);
+        status.voting = this.roundStatus.voting && this.roundStatus.voting.map((player) => player.username);
+        status.messageActive = this.roundStatus.messageActive;
+        status.message = this.roundStatus.message;
+        status.specificMessage = status.specificMessage || null;
+        status.time = this.roundStatus.time;
+        status.role = role;
+        status.settings = this.settings;
+        
+        /**
+         * Player Specific Display, does not override room rules (which are global).
+         */
+        function manualDisplay (header, message) {
+            status.specificMessage = {header, message};
+        }
+
         return status;
     }
 }

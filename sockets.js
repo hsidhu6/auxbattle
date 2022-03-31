@@ -56,6 +56,11 @@ function setupSocket(socket) {
     socket.on('play', (callback) => {
         callback(gameManager.playGame(socket.userID));
     });
+
+    // Submit a video to the room.
+    socket.on('submitVideo', (video) => {
+        gameManager.submitVideo(socket.userID, video);
+    });
 }
 
 

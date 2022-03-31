@@ -101,7 +101,7 @@
             <div style="border: 3px solid black; margin: auto; width: 500px; height: 500px; border-radius: 20%; padding: 20px; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: center;">
                 <h2 style="text-align:center; text-decoration: underline; margin-bottom: 0px">It's Your Turn!</h2>
                 <h2 style="text-align:center; text-decoration: underline">Answer the following prompt: <span>PROMPT</span></h2>
-                <div><label>Timer: </label><input type="number" style="width: 100px" id="timetext-input"><label> seconds</label></div>
+                <div><label>Timer: </label><input type="number" style="width: 100px" id="playing-time"><label> seconds</label></div>
                 <div><label>Search a Song:  </label><input style="width: 300px" id="song-input"></div>
                 <div id="videostable" style="width: 80%; height: 300px; margin-top: 20px; padding: 20px 0px; border: 3px solid black; overflow-y: scroll; display: flex; flex-direction: column; flex-wrap: nowrap; grid-gap: 30px; align-items: center;">
                     <div class="video">
@@ -117,12 +117,13 @@
         </div>
         <div id="clip-video-modal" class="modal">
             <h1>Clip Video</h1>
-            <h3>Your clip will be of the following duration: <span>DURATION seconds</span>.</h3>
-            <div><label>Select a starting position:  </label><input type="range" min="1" max="100" value="50" class="slider" id="time-input"></div>
-            <div><label>Time: </label> <input type="number" style="width: 100px" id="timetext-input"><label> seconds</label></div>
-            <div><i class="fa fa-3x fa-play"></i><i class="fa fa-3x fa-pause"></i></div>
-            <button>Submit</button>
-            <button>Cancel</button>
+            <div><label>Time left in round: </label> <input type="number" style="width: 100px" id="clip-time"><label> seconds</label></div>
+            <h3>Your clip will be of the following duration: <span id="clip-duration">DURATION</span> seconds.</h3>
+            <div><label>Select a starting position:  </label><input type="range" min="0" max="100" value="0" class="slider" id="clip-select-slider"></div>
+            <div><label>Selected time: </label> <input type="number" style="width: 100px" value="0" id="clip-select-time" readonly><label> seconds</label></div>
+            <div id="clip-select-play"></div>
+            <button id="clip-video-submit">Submit</button>
+            <button id="clip-video-cancel">Cancel</button>
         </div>  
         <!-- Display Vote menu -->
         <div id="menu4" style="display: none; height:90%; width:100%; border: 2px solid black">
@@ -130,7 +131,7 @@
             <div style="border: 3px solid black; margin: auto; width: 500px; height: 500px; border-radius: 20%; padding: 20px; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: center;">
                 <h2 style="text-align:center; text-decoration: underline; margin-bottom: 0px">Vote for the best song!</h2>
                 <h2 style="text-align:center; text-decoration: underline">The songs were chosen to answer this prompt: <span>PROMPT</span></h2>
-                <div><label>Timer: </label><input type="number" style="width: 100px" id="timetext-input"><label> seconds</label></div>
+                <div><label>Timer: </label><input type="number" style="width: 100px" id="vote-time"><label> seconds</label></div>
                 <div style="display: flex; width: 100%; flex-direction: row; justify-content:space-between; align-items: center;">
                     <div style="display: flex; flex-direction: column; flex-wrap: nowrap; align-items: center;">
                         <i class="fa fa-4x fa-play"></i>
@@ -152,7 +153,7 @@
             <button style="position: fixed; right:0; top:0; z-index: 3">Show Bracket</button>
             <div style="border: 3px solid black; margin: auto; width: 500px; height: 500px; border-radius: 20%; padding: 20px; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: center;">
                 <h2 style="text-align:center; text-decoration: underline; margin-bottom: 0px">Results of the Vote!</h2>
-                <div><label>Timer: </label><input type="number" style="width: 100px" id="timetext-input"><label> seconds</label></div>
+                <div><label>Timer: </label><input type="number" style="width: 100px" id="results-time"><label> seconds</label></div>
                 <div style="display: flex; width: 80%; flex-direction: row; justify-content:space-between; align-items: center;">
                     <div style="display: flex; flex-direction: column; flex-wrap: nowrap; align-items: center;">
                         <h2>TITLE OF SONG</h2>

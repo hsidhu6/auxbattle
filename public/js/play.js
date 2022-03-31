@@ -212,6 +212,7 @@ function eventHandle() {
         // socket.emit("saveSettings", settings);
     });
 
+    // If the client searches a song, display the songs for selection
     let timer = null;
     document.getElementById("song-input").addEventListener("input", (evt) => {
         clearTimeout(timer);
@@ -219,10 +220,13 @@ function eventHandle() {
         timer = setTimeout(async (evt)=> {
             await initGAPI();
             let videos = await searchYoutube(songInput.value);
+            // Each video will have a select button that handles submission
             displayVideos(videos);
         },
         1000);
     });
+
+
 }
 
 /**
@@ -352,6 +356,11 @@ function createPlayVideoIcon(videoID="LoE3X_KpzTU", start=20, stop=120) {
     return icon;
 }
 
+let clipDuration = undefined; // Set by fetch room state
+/**
+ * TODO
+ * @param {*} videos 
+ */
 function displayVideos(videos) {
     let videoTable = document.getElementById("videostable");
     videoTable.innerHTML = "";
@@ -365,15 +374,68 @@ function displayVideos(videos) {
         outerDIV.append(name, author);
         
         let selectButton = quickCreate("button", null, "Select");
+        // Attach submission script
+        selectButton.addEventListener("click", (evt) => {
+            
+            displayClipModal(video, clipDuration);
+        });
+
         videoDIV.append(icon, outerDIV, selectButton);
         videoTable.append(videoDIV);
     }
+}
+
+/**
+ * TODO
+ * @param {*} video 
+ * @param {*} clipDuration 
+ */
+function displayClipModal(video, clipDuration=30) {
+    console.log("DISPLAYING FOR...", video, clipDuration);
+    document.getElementById("clip-video-modal").style.display = "flex";
+
+    // Set duration
+    document.getElementById("clip-duration").textContent = clipDuration;
+    document.getElementById("clip-select-slider").max = video.duration;
+
+    // Set on slider change
+    let slider = document.getElementById("clip-select-slider"); 
+    slider.onchange = (evt) => {
+        document.getElementById("clip-select-time").value = slider.value;
+
+        // CHANGE PLAY PAUSE BUTTON
+        let div = document.getElementById("clip-select-play");
+        div.innerHTML = "<h4>Preview Clip: </h4>";
+        div.appendChild(createPlayVideoIcon(video.ID, slider.value, Number(slider.value) + clipDuration));
+    };
+
+    // Button Scripts
+    document.getElementById("clip-video-submit").onclick = (evt) => {
+        video.startingPosition = slider.value;
+        socket.emit("submitVideo", video);
+        console.log("SENDING TO SERVER: ", video);
+        document.getElementById("clip-video-modal").style.display = "none";
+    };
+    document.getElementById("clip-video-cancel").onclick = (evt) => {
+        document.getElementById("clip-video-modal").style.display = "none";
+        if (player) {
+            player.stopVideo();
+        }
+    };
     
 }
 
-function displayPauseModal(show, message, time) {
+/**
+ * TODO
+ * @param {*} show 
+ * @param {*} message 
+ * @param {*} time 
+ * @returns 
+ */
+function displayPauseModal(show, message, time, specificMessage) {
+    console.log(time);
     let modal = document.getElementById("pause-modal");
-    if (!show) {
+    if (!show && specificMessage == null) {
         modal.style.display = "none";
         return;
     }
@@ -381,9 +443,14 @@ function displayPauseModal(show, message, time) {
     let header = document.getElementById("pause-modal-header");
     let timer = document.getElementById("pause-modal-timer");
     let messageP = document.getElementById("pause-modal-message");
-    header.textContent = message.header;
     timer.value = time;
-    messageP.textContent = message.message;
+    if (show) {
+        header.textContent = message.header;
+        messageP.textContent = message.message;
+    } else {
+        header.textContent = specificMessage.header;
+        messageP.textContent = specificMessage.message;
+    }
 
     modal.style.display = "flex";
 }
@@ -392,8 +459,11 @@ function updateRoomState() {
     setTimeout(updateRoomState, 1000);
     socket.emit("fetch-room-state", (response) => {
         console.log(response);
-        displayPauseModal(response.messageActive, response.message, response.time); // For Messages / Waiters / Pausing
+        displayPauseModal(response.messageActive, response.message, response.time, response.specificMessage); // For Messages / Waiters / Pausing
         displayPlayers(response.players); // For the Room Menu
+
+        // Set global variables
+        clipDuration = response.clipDuration;
 
         /**
          * 
@@ -407,18 +477,11 @@ function updateRoomState() {
                 "menu4", // Voting Menu
                 "menu5", // Results Screen
             ];
-            let modalIDs = [
-                "create-room-modal",
-                "join-room-modal",
-                "clip-video-modal",
-                "pause-modal",
-            ];
+            
             // For all elements needed to show, show them, otherwise turn all the rest off
             for (let id of showThese) {
                 if (menuIDs.includes(id)) {
                     document.getElementById(id).style.display = "block";
-                } else {
-                    document.getElementById(id).style.display = "flex";
                 }
             }
             // Hide all others
@@ -427,23 +490,30 @@ function updateRoomState() {
                     document.getElementById(id).style.display = "none";
                 }
             }
-            for (let id of modalIDs) {
-                if (!showThese.includes(id)) {
-                    document.getElementById(id).style.display = "none";
-                }
-            }
         }
-        if (response.role != "player" && player != null) { // Pause background player
+        if (response.role != "player" && response.role != "voter" && player != null) { // Pause background player
             player.stopVideo();
         }
-         if (response.state == "playing") {
+        // Update all timers to time
+        let timerIDs = [
+            "playing-time",
+            "clip-time",
+            "vote-time",
+            "results-time",
+            "pause-modal-timer"
+        ];
+        for (let timerID of timerIDs) {
+            document.getElementById(timerID).value = response.time;
+        }
+
+        if (response.state == "playing") {
             if (response.role == "player") {
                 // Configure view for player, submission would be completed on click of button
                 robustDisplay(["menu3"]);
             } else {
                 // Configure view for waiter, waits until timer is done
                 // Assumes messageActive = true.
-                robustDisplay(["menu4", "pause-modal"]);
+                robustDisplay(["menu4"]);
             }
 
         } else if (response.state == "voting") {
@@ -453,7 +523,7 @@ function updateRoomState() {
             } else {
                 // Configure view for waiter, waits until time is done
                 // Assumes messageActive = true.
-                robustDisplay(["menu5", "pause-modal"]);
+                robustDisplay(["menu5"]);
             }
         } else if (response.state == "results") {
             // View the results
