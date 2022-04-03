@@ -135,6 +135,12 @@ socket.on('connect', function () {
     // Retain user identity through lost connections.
     socket.emit('persist', socketID, (response) => {
         localStorage.setItem('socketID', response);
+
+        socket.emit('reconnect', (response) => {
+            if (response.success != false) {
+                console.log("RECONNECT POSSIBLE");
+            }
+        });
     });
 });
 
@@ -344,6 +350,7 @@ function createPlayVideoIcon(videoID="LoE3X_KpzTU", start=20, stop=120) {
                 startSeconds: start,
                 endSeconds: stop
             });
+            player.setVolume(playerVolume);
             icon.classList.remove("fa-play");
             icon.classList.add("fa-pause");
         } else {
@@ -376,7 +383,6 @@ function displayVideos(videos) {
         let selectButton = quickCreate("button", null, "Select");
         // Attach submission script
         selectButton.addEventListener("click", (evt) => {
-            
             displayClipModal(video, clipDuration);
         });
 
@@ -384,6 +390,49 @@ function displayVideos(videos) {
         videoTable.append(videoDIV);
     }
 }
+
+/**
+ * TODO
+ * @param {*} videos 
+ */
+function displayVotes(videos, clipDuration) {
+    let voteTable = document.getElementById("votestable");
+    voteTable.innerHTML = "";
+    let rand = Math.floor(Math.random() * 2); // Assume 2 videos
+    for (let i = 0; i < 2; i++) {
+        let video = videos[rand];
+        rand = 1 - rand;
+        let voteDiv = quickCreate("div", {"class": "vote"});
+        let playButton = createPlayVideoIcon(video.videoID, video.start, video.start + clipDuration);
+        let title = quickCreate("h2", null, video.name);
+        let author = quickCreate("h2", null, "By " + video.author);
+        let voteButton = quickCreate("button", null, "Vote");
+        // Attach script
+        voteButton.addEventListener("click", (evt) => {
+            socket.emit("submitVote", video.videoID);
+        });
+
+        voteDiv.append(playButton, title, author, voteButton);
+        voteTable.append(voteDiv);
+    }
+}
+
+/**
+ * TODO
+ * @param {*} results 
+ */
+function displayResults(results) {
+    console.log("DISPLAYING RESULTS", results);
+
+    let resultsTable = document.getElementById("resultstable");
+    resultsTable.innerHTML = "";
+    let resultDiv = quickCreate("div", {"class": "result"});
+    console.log(result);
+
+    resultDiv.append(title, name, count);
+    resultsTable.append(resultDiv);
+}
+
 
 /**
  * TODO
@@ -413,7 +462,6 @@ function displayClipModal(video, clipDuration=30) {
     document.getElementById("clip-video-submit").onclick = (evt) => {
         video.startingPosition = slider.value;
         socket.emit("submitVideo", video);
-        console.log("SENDING TO SERVER: ", video);
         document.getElementById("clip-video-modal").style.display = "none";
     };
     document.getElementById("clip-video-cancel").onclick = (evt) => {
@@ -455,12 +503,32 @@ function displayPauseModal(show, message, time, specificMessage) {
     modal.style.display = "flex";
 }
 
+let lastState = "unset"; // Needed for voting display
+let playerVolume = 50; // Needed for setting player volume
 function updateRoomState() {
     setTimeout(updateRoomState, 1000);
     socket.emit("fetch-room-state", (response) => {
         console.log(response);
         displayPauseModal(response.messageActive, response.message, response.time, response.specificMessage); // For Messages / Waiters / Pausing
         displayPlayers(response.players); // For the Room Menu
+        
+        // Display top elements
+        document.getElementById("bracket-button").style.display = "block";
+        document.getElementById("player-volume").style.display = "flex";
+        
+        // Top Elements scripts
+        document.getElementById("bracket-button").onclick = (evt) => {
+            console.log("DISPLAY BRACKET"); // TODO
+        };
+        
+        let input = document.getElementById("player-volume-input");
+        input.onchange = (evt) => {
+            playerVolume = Number(input.value);
+            if (player != null) {
+                player.setVolume(playerVolume);
+            }
+        };
+
 
         // Set global variables
         clipDuration = response.clipDuration;
@@ -520,6 +588,9 @@ function updateRoomState() {
             if (response.role == "voter") {
                 // Configure view for voter, submission would be completed on click of button
                 robustDisplay(["menu4"]);
+                if (lastState != "voting") {
+                    displayVotes(response.videos, response.settings.clipDuration);
+                }
             } else {
                 // Configure view for waiter, waits until time is done
                 // Assumes messageActive = true.
@@ -528,11 +599,15 @@ function updateRoomState() {
         } else if (response.state == "results") {
             // View the results
             robustDisplay(["menu5"]);
+            if (response.results != null) {
+                displayResults(response.results);
+            }
         } else if (response.state == "setting") {
             // Revert back to settings
             robustDisplay(["menu2"]);
         }
 
+        lastState = response.state;
     });
 }
 

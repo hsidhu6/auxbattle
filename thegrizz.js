@@ -6,7 +6,6 @@
  * @author Harjyot Sidhu, Pirjot Atwal
  */
 
-const { response } = require("express");
 
 /**
  * The GameManager keeps track of a list of rooms
@@ -63,6 +62,25 @@ const { response } = require("express");
         }
     }
 
+    disconnect(socketID) {
+        let room = getRoom(socketID);
+        if (room != null) {
+            // room.disconnect(socketID); TODO
+        }
+    }
+
+    /**
+     * Reconnect a user back to a room if they belong to one.
+     * @param {*} socketID 
+     */
+    reconnect(socketID) {
+        let room = getRoom(socketID);
+        if (room == null) {
+            return {success: false, message: "USER DOES NOT BELONG TO ANY ROOM"};
+        }
+        // return room.reconnect(socket); TODO
+    }
+
     /**
      * Start the game in a room.
      * @param {*} socketID 
@@ -89,9 +107,18 @@ const { response } = require("express");
         return room.submitVideo(socketID, video);
     }
 
+    submitVote(socketID, vote) {
+        let room = this.getRoom(socketID);
+        if (room == null) {
+            return {success: false, message: "ROOM DOES NOT EXIST."};
+        }
+        // Submit Vote
+        return room.submitVote(socketID, vote);
+    }
+
     /**
      * Return the room that this socket is in, return null if the
-     * person is not in any socket.
+     * person is not in any room.
      * @param {*} socketID 
      * @returns 
      */
@@ -187,6 +214,7 @@ class Bracket {
             this.maxRounds = determineRounds(players.length);
             Bracket.roundBool = true;
         }
+        this.winner = null;
         this.bracket = this.buildBracket(pairs);
     }
 
@@ -197,7 +225,6 @@ class Bracket {
      * @returns 
      */
     buildBracket(pairs) {
-        this.winner = null;
         return {
             rounds: {
                 1: pairs,
@@ -335,16 +362,20 @@ class Room {
             promptsToPlay: [], //to be implemented 
             clipDuration: 30,
             dcTime: 60,
-            voteTime: 90,
-            roundTime: 60,
+            voteTime: 30,
+            roundTime: 30,
             messageTime: 7,
             resultsTime: 20
         }
         this.players = [this.host];
-        this.possibleStates = ["setting", "playing", "message", "voting", "result"];
+        this.possibleStates = ["setting", "playing", "message", "voting", "result", "ending"];
         
         // GAME VARS
         this.bracket = null;
+        this.resetRoom();
+    }
+
+    resetRoom() {
         this.roundStatus = {
             state: "setting",
             bracketLevel: null,
@@ -454,7 +485,7 @@ class Room {
             thisRoom.roundStatus.timer.startTime();
             return;
         } else if (thisRoom.roundStatus.currentlyPlaying.length == 2) {
-            message = "This round will be " + thisRoom.roundStatus.currentlyPlaying[0].username + " vs. " + thisRoom.roundStatus.currentlyPlaying[1].username;
+            message = "This round's matchup will be " + thisRoom.roundStatus.currentlyPlaying[0].username + " vs. " + thisRoom.roundStatus.currentlyPlaying[1].username;
         }
         
         /**
@@ -475,6 +506,9 @@ class Room {
             thisRoom.roundStatus.timer.startTime();
         }
 
+        /**
+         * 
+         */
         function showVoting() {
             console.log("WAITING FOR VOTES");
             // RETRIEVE SUBMITTED VIDEOS
@@ -498,7 +532,12 @@ class Room {
                 // Default winner
                 let message = "Only one player submitted a video... Automatically granting them the win.";
                 thisRoom.roundStatus.votes = [{
-                    forID: thisRoom.roundStatus.submittedVideos[0].socketID
+                    socketID: "SERVER-GENERATED VOTE",
+                    vote: {
+                        from: "SERVER-GENERATED VOTE",
+                        for: thisRoom.roundStatus.submittedVideos[0].socketID,
+                        videoName: thisRoom.roundStatus.submittedVideos[0].video.name
+                    }
                 }];
                 // SKIP ROUND LOGIC
                 thisRoom.displayMessage("Round " + thisRoom.roundStatus.currentRound, message, thisRoom.settings.messageTime);
@@ -512,7 +551,7 @@ class Room {
             }  else {
                 // Two videos to review, start voting screen
                 // Change the state to the voting process
-                thisRoom.roundStatus.state = "voting"; // DEBUG
+                thisRoom.roundStatus.state = "voting";
                 thisRoom.roundStatus.timer.setTime(thisRoom.settings.voteTime);
                 thisRoom.roundStatus.timer.addToQueue(() => {
                     thisRoom.roundStatus.time = thisRoom.roundStatus.timer.time;
@@ -535,9 +574,9 @@ class Room {
             let count2 = 0;
             if (thisRoom.roundStatus.votes != null) {
                 for (let vote of thisRoom.roundStatus.votes) {
-                    if (vote.forID == player1.socketID) {
+                    if (vote.vote.for == player1.socketID) {
                         count1++;
-                    } else if (vote.forID == player2.socketID) {
+                    } else if (vote.vote.for == player2.socketID) {
                         count2++;
                     }
                 }
@@ -552,23 +591,17 @@ class Room {
                 winner = player2;
             }
             if (winner == "tie") { // RANDOMLY DETERMINE WINNER
-                if (Math.floor(Math.random() * 2) == 0) {
-                    winner = player1;
-                } else {
-                    winner = player2;
-                }
+                Math.floor(Math.random() * 2) == 0 ? winner = player1 : winner = player2;
                 thisRoom.roundStatus.results = {
                     tie: true,
-                    winner: {
-                        username: winner.username,
-                    },
-                    loser: {
-                        username: (winner == player1 ? player2 : player1).username
-                    }
+                    winner: {username: winner.username},
+                    loser: {username: (winner == player1 ? player2 : player1).username}
                 }
+                thisRoom.bracket.playNextMatchup(thisRoom.roundStatus.bracketLevel, thisRoom.roundStatus.currentlyPlaying, winner);
             } else {
                 thisRoom.bracket.playNextMatchup(thisRoom.roundStatus.bracketLevel, thisRoom.roundStatus.currentlyPlaying, winner);
                 thisRoom.roundStatus.results = {
+                    tie: false,
                     winner: {
                         username: winner.username,
                         votes: winner == player1 ? count1 : count2
@@ -576,8 +609,7 @@ class Room {
                     loser: {
                         username: (winner == player1 ? player2 : player1).username,
                         votes: winner == player1 ? count2 : count1
-                    },
-                    tie: false
+                    }
                 }
             }
             
@@ -593,16 +625,14 @@ class Room {
 
         function restartLogic() {
             console.log("RESTARTING LOOP...")
-            // FINISHED LOOP
-            // CHECK FOR WINNER
-            // POSSIBLE RESET OF ROUND?
-            if ("thereisawinner" == false) {
+            
+            if (thisRoom.bracket.winner != null) {
+                console.log("WINNER FOUND!", thisRoom.bracket.winner.username);
                 // PRESENT WINNER SCREEN IN MESSAGE
-                thisRoom.roundStatus.state = "setting";
-            } else if (thisRoom.roundStatus.state = "exiting") {
+                thisRoom.resetRoom();
+            } else if (thisRoom.roundStatus.state == "exiting") {
                 // END THE GAME, RESET THE STATE TO SETTING
-                thisRoom.roundStatus.state = "setting";
-                // PERFORM ANY OTHER RESETS NEEDED
+                thisRoom.resetRoom();
             } else {
                 thisRoom.mainGameplayLoop();
             }
@@ -638,7 +668,6 @@ class Room {
      */
     updateByNextMatchup() {
         let matchup = this.bracket.getNextMatchup();
-        console.log("CURRENT BRACKET", this.bracket.bracket.rounds);
         this.roundStatus.currentRound++;
         this.roundStatus.currentlyPlaying = matchup[0];
         this.roundStatus.bracketLevel = matchup[1];
@@ -657,6 +686,12 @@ class Room {
      * they are currently playing.
      */
     submitVideo (socketID, video) {
+        // PERFORM CHECK FOR IF STATE == PLAYING AND SOCKETID BELONGS TO PLAYER
+        if (this.roundStatus.state != "playing" || !this.roundStatus.currentlyPlaying.map((player) => player.socketID).includes(socketID)) {
+            return {success:false, message: "ERROR IN SUBMITTING VIDEO"};
+        }
+
+        // REPLACE VIDEO IF NOT NEEDED
         if (this.roundStatus.submittedVideos == null) {
             this.roundStatus.submittedVideos = [];
         } else {
@@ -669,22 +704,15 @@ class Room {
             }
         }
 
-        // PERFORM CHECK FOR IF STATE == PLAYING AND SOCKETID BELONGS TO PLAYER
-        if (this.roundStatus.state != "playing" || !this.roundStatus.currentlyPlaying.map((player) => player.socketID).includes(socketID)) {
-            return {success:false, message: "ERROR IN SUBMITTING VIDEO"};
-        }
-        // FETCH USERNAME
+        // FETCH PLAYER FOR USERNAME
         let player = null;
         for (let play of this.roundStatus.currentlyPlaying) {
             if (play.socketID == socketID) {
                 player = play;
+                break;
             }
         }
-        console.log("GOT VIDEO", {
-            socketID,
-            username: player.username,
-            video
-        });
+
         this.roundStatus.submittedVideos.push({
             socketID,
             username: player.username,
@@ -696,17 +724,43 @@ class Room {
      * A client-based function where someone can submit a vote for a certain video.
      */
     submitVote (socketID, videoID) {
-        if (this.roundStatus.votes == null) {
-            this.roundStatus.votes = [];
+        let thisRoom = this;
+        function makeVote(videoID) {
+            let vote = {
+                from: socketID
+            };
+            for (let video of thisRoom.roundStatus.submittedVideos) {
+                if (video.video.ID == videoID) {
+                    vote.for = video.socketID;
+                    vote.videoName = video.video.name;
+                    break;
+                }
+            }
+            return vote;
         }
 
         // PERFORM CHECK FOR STATE == VOTING AND SOCKETID BELONGS TO VOTER
-        // APPLY VOTE BY EXAMINING SUBMITTED VIDEO ID
+        if (this.roundStatus.state != "voting" || !this.roundStatus.voting.map((player) => player.socketID).includes(socketID)) {
+            return {success:false, message: "ERROR IN SUBMITTING VOTE"};
+        }
 
+        // INITIALIZE VOTES AND REPLACE VOTE IF NEEDED
+        if (this.roundStatus.votes == null) {
+            this.roundStatus.votes = [];
+        } else {
+            // Replace vote if already submitted
+            for (let i = 0; i < this.roundStatus.votes.length; i++) {
+                if (this.roundStatus.votes[i].socketID == socketID) {
+                    this.roundStatus.votes[i].vote = makeVote(videoID);
+                    return;
+                }
+            }
+        }
+
+        // FETCH USER VOTING FOR BASED ON VIDEO ID
         this.roundStatus.votes.push({
-            socketID: "FROM",
-            videoID: videoID,
-            forID: "FOR"
+            socketID,
+            vote: makeVote(videoID)
         });
     }
 
@@ -715,13 +769,15 @@ class Room {
      * the client.
      */
     getStrippedStatus(socketID) {
-        let status = {};
+        let status = {}; // Return me
 
+        // Add player usernames
         let players = [];
         for (let player of this.players) {
             players.push(player.username);
         }
 
+        // Set Role based on state and roundStatus variables
         let role = "DEFAULT";
         if (this.roundStatus.state == "playing") {
             if (this.roundStatus.currentlyPlaying.map((player) => player.socketID).includes(socketID)) {
@@ -741,8 +797,6 @@ class Room {
             }
         }
 
-        // TODO STRIP VIDEOS, STRIP VOTES, STRIP RESULTS
-
         // INITIALIZE STATE
         status.host = this.host.username;
         status.players = players;
@@ -755,6 +809,8 @@ class Room {
         status.time = this.roundStatus.time;
         status.role = role;
         status.settings = this.settings;
+        status.videos = [];
+        status.results = null;
         
         /**
          * Player Specific Display, does not override room rules (which are global).
@@ -762,6 +818,22 @@ class Room {
         function manualDisplay (header, message) {
             status.specificMessage = {header, message};
         }
+
+        // Append stripped videos for voting process
+        if (this.roundStatus.submittedVideos != null) {
+            for (let video of this.roundStatus.submittedVideos) {
+                status.videos.push({
+                    videoID: video.video.ID,
+                    start: Number(video.video.startingPosition),
+                    author: video.video.author,
+                    duration: video.video.duration,
+                    name: video.video.name
+                });
+            }
+        }
+
+        // Append stripped votes for results
+        status.results = this.roundStatus.results;
 
         return status;
     }

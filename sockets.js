@@ -20,7 +20,16 @@ function setupSocket(socket) {
             socket.userID = ID;
         }
     });
-    // TODO: Socket relogin here
+
+    // Socket Disconnect Case
+    socket.on('disconnect', (reason) => {
+        gameManager.disconnect(socket.userID);
+    });
+
+    // Socket Relogin Case
+    socket.on('reconnect', (callback) => {
+        callback(gameManager.reconnect(socket.userID));
+    });
 
     // Get Rooms Request
     socket.on("get-room-hosts", (callback) => {
@@ -60,6 +69,11 @@ function setupSocket(socket) {
     // Submit a video to the room.
     socket.on('submitVideo', (video) => {
         gameManager.submitVideo(socket.userID, video);
+    });
+
+    // Submit a vote to the room.
+    socket.on('submitVote', (vote) => {
+        gameManager.submitVote(socket.userID, vote);
     });
 }
 
