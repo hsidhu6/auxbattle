@@ -11,18 +11,21 @@ let connections = {}; // Maps Original Socket IDS to an array of all sockets tha
 
 function setupSocket(socket) {
     socket.on('persist', (ID, callback=()=>{}) => { // client will send what their OG ID is
+        // We set the socket.userID to the OG ID, socket.id remains the same
         if (!Object.keys(connections).includes(ID)) { // This is a new user, tell them to save their current ID to cache
             connections[socket.id] = [socket.id];
             socket.userID = socket.id;
-            callback(socket.id);
-        } else { // This user reconnected, add them to the pool
-            connections[ID].push(socket.id);
-            socket.userID = ID;
+            return callback(socket.id);
         }
+        // This user reconnected, add them to the pool
+        connections[ID].push(socket.id);
+        socket.userID = ID;
+        callback(socket.userID);
     });
 
     // Socket Disconnect Case
     socket.on('disconnect', (reason) => {
+        // console.log(reason);
         gameManager.disconnect(socket.userID);
     });
 

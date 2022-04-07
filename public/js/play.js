@@ -10,7 +10,7 @@
  * @param {String} route the route to make the call on
  * @param {JSON} body the body to stringify and send, if not supplied then call type is GET
  */
- async function makeRequest(route, body=null) {
+async function makeRequest(route, body=null) {
     let options = {
         method: 'GET',
         headers: {
@@ -137,8 +137,9 @@ socket.on('connect', function () {
         localStorage.setItem('socketID', response);
 
         socket.emit('reconnect', (response) => {
-            if (response.success != false) {
-                console.log("RECONNECT POSSIBLE");
+            if (response.success == true) {
+                // The user can be reconnected to the room, place them in the update loop
+                updateRoomState();
             }
         });
     });
@@ -427,7 +428,6 @@ function displayResults(results) {
     let resultsTable = document.getElementById("resultstable");
     resultsTable.innerHTML = "";
     let resultDiv = quickCreate("div", {"class": "result"});
-    console.log(result);
 
     resultDiv.append(title, name, count);
     resultsTable.append(resultDiv);

@@ -63,10 +63,19 @@
     }
 
     disconnect(socketID) {
-        let room = getRoom(socketID);
-        if (room != null) {
-            // room.disconnect(socketID); TODO
+        let room = this.getRoom(socketID);
+        if (room == null) {
+            return {success: false, message: "USER DOES NOT BELONG TO ANY ROOM"};
         }
+        return room.disconnect(socketID, this); 
+    }
+
+    /**
+     * Close the given room by removing it from the list.
+     * @param {*} room 
+     */
+    closeRoom(room) {
+        this.rooms = this.rooms.filter((rom) => rom != room);
     }
 
     /**
@@ -74,11 +83,11 @@
      * @param {*} socketID 
      */
     reconnect(socketID) {
-        let room = getRoom(socketID);
+        let room = this.getRoom(socketID);
         if (room == null) {
             return {success: false, message: "USER DOES NOT BELONG TO ANY ROOM"};
         }
-        // return room.reconnect(socket); TODO
+        return room.reconnect(socketID);
     }
 
     /**
@@ -399,6 +408,7 @@ class Room {
                 message: null
             }
         };
+        this.disconnected = null;
     }
 
     /**
@@ -411,27 +421,30 @@ class Room {
     }
 
     startGame() {
+        console.log("STARTING GAME");
+        if (this.players.length < 3) {
+            return {success: false, message: "NOT ENOUGH PLAYERS. NEED ATLEAST 3."};
+        }
+        
         // Initialize the bracket
         this.bracket = new Bracket(this.players);
         this.roundStatus.maxRounds = this.bracket.maxRounds;
         this.roundStatus.currentRound = 0;
         // Initialize Timer
         this.roundStatus.timer = new Timer();
+        // Initialize Disconnect Status
+        this.disconnected = [];
 
         // INITIALIZE THE GAME
-        console.log("STARTING GAME");
-        if (this.players.length < 3) {
-            return {success: false, message: "NOT ENOUGH PLAYERS. NEED ATLEAST 3."};
-        } else {
-            // Start GameplayLoop()
-            this.mainGameplayLoop();
-
-            return {success: true};
-        }
+        // Start GameplayLoop()
+        this.mainGameplayLoop();
+        return {success: true};
     }
 
     /**
      * Display a pause modal for a message.
+     * 
+     * Sets messageActive to true, the state to "message", and the time to the provide param.
      * @param {*} header 
      * @param {*} message 
      * @param {*} time 
@@ -500,12 +513,10 @@ class Room {
             thisRoom.roundStatus.timer.setTime(thisRoom.settings.roundTime);
             thisRoom.roundStatus.timer.addToQueue(() => {
                 thisRoom.roundStatus.time = thisRoom.roundStatus.timer.time;
-                //SHORT CUT CHECK FOR VIDEOS
             });
             thisRoom.roundStatus.timer.addToQueue0(showVoting);
             thisRoom.roundStatus.timer.startTime();
         }
-
         /**
          * 
          */
@@ -555,7 +566,6 @@ class Room {
                 thisRoom.roundStatus.timer.setTime(thisRoom.settings.voteTime);
                 thisRoom.roundStatus.timer.addToQueue(() => {
                     thisRoom.roundStatus.time = thisRoom.roundStatus.timer.time;
-                    // SHORTCUT CHECK FOR VOTES
                 });
                 thisRoom.roundStatus.timer.addToQueue0(showResults);
                 thisRoom.roundStatus.timer.startTime();
@@ -630,7 +640,7 @@ class Room {
                 console.log("WINNER FOUND!", thisRoom.bracket.winner.username);
                 // PRESENT WINNER SCREEN IN MESSAGE
                 thisRoom.resetRoom();
-            } else if (thisRoom.roundStatus.state == "exiting") {
+            } else if (thisRoom.roundStatus.state == "ending" || thisRoom.roundStatus.state == "exiting") {
                 // END THE GAME, RESET THE STATE TO SETTING
                 thisRoom.resetRoom();
             } else {
@@ -663,6 +673,91 @@ class Room {
      * else have the host rejoin.
      */
 
+    disconnect(socketID, manager) {
+        function genMessage(room) {
+            let message = "The following people are disconnected: ";
+            for (let i = 0; i < room.disconnected.length; i++) {
+                let username = null;
+                for (let player of room.players) {
+                    if (player.socketID == room.disconnected[i]) {
+                        username = player.username;
+                        break;
+                    }
+                }
+                message += username;
+                if (i != room.disconnected.length - 1) {
+                    message += ", ";
+                } else {
+                    message += "."
+                }
+            }
+            return message;
+        }
+        if (this.disconnected == undefined || this.disconnected == null) {
+            // TODO REMOVE PLAYER FROM PLAYERS LIST
+            this.players = this.players.filter((player) => player.socketID != socketID);
+            // CHECK IF ROOM EMPTY
+            if (this.players.length == 0) {
+                manager.closeRoom(this);
+            }
+            return; // The game has not started yet
+        }
+        if (this.disconnected.length == 0) { // This is the first person that disconnected
+            console.log("DISCONNECT STATE STORE")
+            this.savedState = this.roundStatus.state;
+            this.savedTime = this.roundStatus.timer.time;
+            this.timerQueue = this.roundStatus.timer.queueFunc;
+            this.timerQueue0 = this.roundStatus.timer.queueEx0;
+            this.roundStatus.timer.clearQueue();
+            this.roundStatus.timer.clearQueue0();
+            this.roundStatus.timer.stopTime(); // Save the state and clear the timer (to be used by reconnect function)
+            this.disconnected.push(socketID);
+            
+            this.displayMessage("Disconnect Notice", genMessage(this), this.settings.dcTime);
+            this.roundStatus.timer.setTime(this.settings.dcTime);
+            this.roundStatus.timer.addToQueue(() => {
+                this.displayMessage("Disconnect Notice", genMessage(this), this.roundStatus.timer.time);
+            });
+            this.roundStatus.timer.addToQueue0(()=> {
+                this.players = this.players.filter((player) => !this.disconnected.includes(player.socketID)); // Remove disconnected players
+                this.resetRoom();
+            });
+            this.roundStatus.timer.startTime();
+        } else { // There is a person who is already disconnected
+            this.disconnected.push(socketID);
+            this.roundStatus.timer.setTime(this.settings.dcTime);
+
+            this.roundStatus.timer.clearQueue();
+            this.roundStatus.timer.addToQueue(() => {
+                this.displayMessage("Disconnect Notice", genMessage(this), this.roundStatus.timer.time);
+            });
+        }
+    }
+
+
+    reconnect(socketID) {
+        if (this.disconnected == undefined || this.disconnected == null || !this.disconnected.includes(socketID)) {
+            // The user does not belong to this room or is not disconnected
+            return {success: false, message: "USER IS NOT DISCONNECTED"};
+        } // The user needs to be reconnected
+        this.disconnected = this.disconnected.filter((id) => id != socketID); // Remove socketID from the array
+        // Perform a check and reestablish the state the game was originally in
+        if (this.disconnected.length == 0) {
+            // Reestablish State of game
+            this.roundStatus.timer.clearQueue();
+            this.roundStatus.timer.clearQueue0();
+            this.roundStatus.timer.stopTime();
+
+            this.savedState = this.roundStatus.state;
+            this.hideMessage();
+            this.roundStatus.timer.setTime(this.savedTime || 30);
+            this.roundStatus.timer.queueFunc = this.timerQueue;
+            this.roundStatus.timer.queueEx0 = this.timerQueue0;
+            this.roundStatus.timer.startTime();
+        }
+        return {success: true, message: "USER RECONNECT"};
+    }
+
     /**
      * TODO
      */
@@ -672,6 +767,7 @@ class Room {
         this.roundStatus.currentlyPlaying = matchup[0];
         this.roundStatus.bracketLevel = matchup[1];
         this.roundStatus.voting = [];
+        this.roundStatus.submittedVideos = [];
 
         let sockets = this.roundStatus.currentlyPlaying.map((player) => player.socketID);
         for (let player of this.players) {
@@ -782,7 +878,6 @@ class Room {
         if (this.roundStatus.state == "playing") {
             if (this.roundStatus.currentlyPlaying.map((player) => player.socketID).includes(socketID)) {
                 role = "player";
-                // TODO CHECK SUBMISSION, IF SUBMITTED THEN DISPLAY MESSAGE
             } else {
                 role = "waiter";
                 manualDisplay("WAIT YOUR TURN!", "Relax while the players submit their videos...");
@@ -790,7 +885,6 @@ class Room {
         } else if (this.roundStatus.state == "voting") {
             if (this.roundStatus.voting.map((player) => player.socketID).includes(socketID)) {
                 role = "voter";
-                // TODO CHECK VOTE, IF SUBMITTED THEN DISPLAY VOTE
             } else {
                 role = "waiter";
                 manualDisplay("WAIT FOR THE RESULTS!", "Well done! Good luck as the votes are cast on the better music choice...");
@@ -899,6 +993,12 @@ class Timer {
     }
     addToQueue(func) {
         this.queueFunc.push(func);
+    }
+    clearQueue0() {
+        this.queueEx0 = [];
+    }
+    clearQueue() {
+        this.queueFunc = [];
     }
 }
 
