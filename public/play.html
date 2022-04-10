@@ -60,16 +60,25 @@
                     <div id="menus" style="width: 95%; min-height: 300px; padding: 35px 0px; border: 3px solid black; display: flex; flex-direction: row; flex-wrap: nowrap; grid-gap: 30px; align-items: center; justify-content: space-around;">
                         <div id="settingmenu" style="width: 45%; height: 300px; padding: 20px 0px; border: 3px solid black; overflow-y: scroll; display: flex; flex-direction:column; grid-gap: 5px;">
                             <div style="display:grid;grid-template-columns: 3fr 1fr;align-items: center;height: 75px;border: 3px solid black;border-radius: 10%;padding: 10px;">
-                                <h4 style="margin: 0px">Clip Duration (seconds): </h4><input style="height: min-content; width: 40px" type="number">
+                                <h4 style="margin: 0px">Max Players: </h4><input id="maxPlayers" style="height: min-content; width: 40px" min="3" max="40" value="32" type="number">
                             </div>
                             <div style="display:grid;grid-template-columns: 3fr 1fr;align-items: center;height: 75px;border: 3px solid black;border-radius: 10%;padding: 10px;">
-                                <h4 style="margin: 0px">Max Players: </h4><input style="height: min-content; width: 40px" type="number">
+                                <h4 style="margin: 0px">Clip Duration (seconds): </h4><input id="clipDuration" style="height: min-content; width: 40px" min="0" max="999" value="30" type="number">
                             </div>
                             <div style="display:grid;grid-template-columns: 3fr 1fr;align-items: center;height: 75px;border: 3px solid black;border-radius: 10%;padding: 10px;">
-                                <h4 style="margin: 0px">Max DC Time (seconds): </h4><input style="height: min-content; width: 40px" type="number">
+                                <h4 style="margin: 0px">Max DC Time (seconds): </h4><input id="dcTime" style="height: min-content; width: 40px" min="0" max="999" value="60" type="number">
                             </div>
                             <div style="display:grid;grid-template-columns: 3fr 1fr;align-items: center;height: 75px;border: 3px solid black;border-radius: 10%;padding: 10px;">
-                                <h4 style="margin: 0px">Voting Time (seconds): </h4><input style="height: min-content; width: 40px" type="number">
+                                <h4 style="margin: 0px">Video Submission Time (seconds): </h4><input id="roundTime" style="height: min-content; width: 40px" min="0" max="999" value="120" type="number">
+                            </div>
+                            <div style="display:grid;grid-template-columns: 3fr 1fr;align-items: center;height: 75px;border: 3px solid black;border-radius: 10%;padding: 10px;">
+                                <h4 style="margin: 0px">Voting Time (seconds): </h4><input id="voteTime" style="height: min-content; width: 40px" min="0" max="999" value="90" type="number">
+                            </div>
+                            <div style="display:grid;grid-template-columns: 3fr 1fr;align-items: center;height: 75px;border: 3px solid black;border-radius: 10%;padding: 10px;">
+                                <h4 style="margin: 0px">Alert Times (seconds): </h4><input id="messageTime" style="height: min-content; width: 40px" min="0" max="999" value="7" type="number">
+                            </div>
+                            <div style="display:grid;grid-template-columns: 3fr 1fr;align-items: center;height: 75px;border: 3px solid black;border-radius: 10%;padding: 10px;">
+                                <h4 style="margin: 0px">Results Time (seconds): </h4><input id="resultsTime" style="height: min-content; width: 40px" min="0" max="999" value="30" type="number">
                             </div>
                         </div>
                         <div id="playersmenu" style="width: 45%; height: 300px; padding: 20px 0px; border: 3px solid black; display: flex; flex-direction: column; flex-wrap: nowrap; overflow-y: scroll">
@@ -99,7 +108,7 @@
         <div id="menu3" style="display: none; height:90%; width:100%; border: 2px solid black">
             <div style="border: 3px solid black; margin: auto; width: 500px; height: 500px; border-radius: 20%; padding: 20px; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: center;">
                 <h2 style="text-align:center; text-decoration: underline; margin-bottom: 0px">It's Your Turn!</h2>
-                <h2 style="text-align:center; text-decoration: underline">Answer the following prompt: <span>PROMPT</span></h2>
+                <h2 style="text-align:center; text-decoration: underline">Answer the following prompt: <span class="prompt">PROMPT</span></h2>
                 <div><label>Timer: </label><input type="number" style="width: 100px" id="playing-time"><label> seconds</label></div>
                 <div><label>Search a Song:  </label><input style="width: 300px" id="song-input"></div>
                 <div id="videostable" style="width: 80%; height: 300px; margin-top: 20px; padding: 20px 0px; border: 3px solid black; overflow-y: scroll; display: flex; flex-direction: column; flex-wrap: nowrap; grid-gap: 30px; align-items: center;">
@@ -123,12 +132,12 @@
             <div id="clip-select-play"></div>
             <button id="clip-video-submit">Submit</button>
             <button id="clip-video-cancel">Cancel</button>
-        </div>  
+        </div>
         <!-- Display Vote menu -->
         <div id="menu4" style="display: none; height:90%; width:100%; border: 2px solid black">
             <div style="border: 3px solid black; margin: auto; width: 500px; height: 500px; border-radius: 20%; padding: 20px; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: center;">
                 <h2 style="text-align:center; text-decoration: underline; margin-bottom: 0px">Vote for the best song!</h2>
-                <h2 style="text-align:center; text-decoration: underline">The songs were chosen to answer this prompt: <span>PROMPT</span></h2>
+                <h2 style="text-align:center; text-decoration: underline">The songs were chosen to answer this prompt: <span class="prompt">PROMPT</span></h2>
                 <div><label>Timer: </label><input type="number" style="width: 100px" id="vote-time"><label> seconds</label></div>
                 <div id="votestable" style="display: flex; width: 100%; flex-direction: row; justify-content:space-between; align-items: center;">
                     <div class="vote">
@@ -151,16 +160,17 @@
             <div style="border: 3px solid black; margin: auto; width: 500px; height: 500px; border-radius: 20%; padding: 20px; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: center;">
                 <h2 style="text-align:center; text-decoration: underline; margin-bottom: 0px">Results of the Vote!</h2>
                 <div><label>Timer: </label><input type="number" style="width: 100px" id="results-time"><label> seconds</label></div>
+                <h3 id="resultsmessage" style="text-align:center">There was a Tie!</h3>
                 <div id="resultstable" style="display: flex; width: 80%; flex-direction: row; justify-content:space-between; align-items: center;">
-                    <div class="result">
-                        <h2>TITLE OF SONG</h2>
-                        <h2>PLAYER NAME</h2>
-                        <h1>VOTE COUNT</h1>
+                    <div>
+                        <h3 style="text-align:center">TITLE</h3>
+                        <h3>Submitted By: </h3>
+                        <h3>Vote Count: </h3>
                     </div>
-                    <div class="result">
-                        <h2>TITLE OF SONG</h2>
-                        <h2>PLAYER NAME</h2>
-                        <h1>VOTE COUNT</h1>
+                    <div>
+                        <h3 style="text-align:center">TITLE</h3>
+                        <h3>Submitted By: </h3>
+                        <h3>Vote Count: </h3>
                     </div>
                 </div>
             </div>

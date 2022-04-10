@@ -212,11 +212,62 @@ function eventHandle() {
         });
     });
 
+    // Display Prompts to the client
+    socket.emit('fetchPrompts', (prompts) => {
+        let menu = document.getElementById("promptsmenu");
+        menu.innerHTML = "";
+        let buttons = [];
+        for (let prompt of prompts) {
+            let promptName = prompt.package;
+            let header = quickCreate("h3", null, promptName);
+            let button = quickCreate("button", {"style": "height:min-content"}, "SELECT");
+            
+            // Button script
+            button.addEventListener("click", (evt) => {
+                for (let but of buttons) {
+                    if (but != button) {
+                        but.textContent = "SELECT";
+                    } else {
+                        but.textContent = "SELECTED";
+                    }
+                }
+                socket.emit("savePrompt", promptName);
+            });
+            buttons.push(button);
+            if (buttons.length == 1) { // First prompt (DEFAULT)
+                button.click();
+            }
+            menu.append(header, button);
+        }
+    });
 
     // If the client saves the settings, send the settings object to the server
     document.getElementById("settings-save-button").addEventListener("click", (evt) => {
+        // Settings Template from server
+        /**
+            maxPlayers: 32,
+            clipDuration: 30,
+            dcTime: 60,
+            voteTime: 30,
+            roundTime: 30,
+            messageTime: 7,
+            resultsTime: 20
+         */
+
         let settings = {} // To implement, take settings from current GUI
-        // socket.emit("saveSettings", settings);
+        let IDs = ["maxPlayers", "clipDuration", "dcTime", "voteTime", "roundTime", "messageTime", "resultsTime"];
+        for (let id of IDs) {
+            let input = document.getElementById(id);
+            let value = Number(input.value) || 0;
+            if (value < Number(input.min)) {
+                value = Number(input.min);
+            } else if (value > Number(input.max)) {
+                value = Number(input.max);
+            }
+            settings[id] = value;
+        }
+
+        socket.emit("saveSettings", settings);
     });
 
     // If the client searches a song, display the songs for selection
@@ -424,13 +475,25 @@ function displayVotes(videos, clipDuration) {
  */
 function displayResults(results) {
     console.log("DISPLAYING RESULTS", results);
+    
+    let resultsMessage = document.getElementById("resultsmessage");
+    if (results.tie == true) {
+        resultsMessage.textContent = "There was a Tie! The winner was randomly decided to be " + results.winner.username + ".";
+    } else {
+        resultsMessage.textContent = "The winner is " + results.winner.username + ".";
+    }
 
     let resultsTable = document.getElementById("resultstable");
     resultsTable.innerHTML = "";
-    let resultDiv = quickCreate("div", {"class": "result"});
-
-    resultDiv.append(title, name, count);
-    resultsTable.append(resultDiv);
+    for (let person of ["winner", "loser"]) {
+        let div = quickCreate("div");
+        let title = quickCreate("h3", {"style": "text-align:center"}, results[person].videoName);
+        let username = quickCreate("h3", null, "Submitted by: " + results[person].username);
+        let vote = quickCreate("h3", null, "Vote Count: " + results[person].voteCount);
+        
+        div.append(title, username, vote);
+        resultsTable.append(div);
+    }
 }
 
 
@@ -481,7 +544,6 @@ function displayClipModal(video, clipDuration=30) {
  * @returns 
  */
 function displayPauseModal(show, message, time, specificMessage) {
-    console.log(time);
     let modal = document.getElementById("pause-modal");
     if (!show && specificMessage == null) {
         modal.style.display = "none";
@@ -503,6 +565,19 @@ function displayPauseModal(show, message, time, specificMessage) {
     modal.style.display = "flex";
 }
 
+/**
+ * 
+ * @param {*} prompt 
+ */
+function displayPrompts(prompt) {
+    // 1. For every element with the class "prompt" change the text content to match
+    if (prompt) {
+        for (let elem of document.getElementsByClassName("prompt")) {
+            elem.textContent = prompt;
+        }
+    }
+}
+
 let lastState = "unset"; // Needed for voting display
 let playerVolume = 50; // Needed for setting player volume
 function updateRoomState() {
@@ -511,6 +586,7 @@ function updateRoomState() {
         console.log(response);
         displayPauseModal(response.messageActive, response.message, response.time, response.specificMessage); // For Messages / Waiters / Pausing
         displayPlayers(response.players); // For the Room Menu
+        displayPrompts(response.prompt);
         
         // Display top elements
         document.getElementById("bracket-button").style.display = "block";
@@ -528,7 +604,6 @@ function updateRoomState() {
                 player.setVolume(playerVolume);
             }
         };
-
 
         // Set global variables
         clipDuration = response.clipDuration;

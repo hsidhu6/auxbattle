@@ -5,6 +5,7 @@
 
 // Import and initialize gameManager (Manages Games, Rooms, Players)
 let classes = require("./thegrizz.js");
+let fs = require('fs');
 let gameManager = new classes.GameManager();
 
 let connections = {}; // Maps Original Socket IDS to an array of all sockets that the user with the OG socket ID generated through reconnections
@@ -25,7 +26,6 @@ function setupSocket(socket) {
 
     // Socket Disconnect Case
     socket.on('disconnect', (reason) => {
-        // console.log(reason);
         gameManager.disconnect(socket.userID);
     });
 
@@ -37,6 +37,21 @@ function setupSocket(socket) {
     // Get Rooms Request
     socket.on("get-room-hosts", (callback) => {
         callback(gameManager.getRoomHosts());
+    });
+
+    // Get Prompts
+    socket.on("fetchPrompts", (callback) => {
+        callback(JSON.parse(fs.readFileSync('prompts.json')));
+    });
+
+    // Submit Prompt Name
+    socket.on("savePrompt", (promptName) => {
+        gameManager.savePrompt(socket.userID, promptName);
+    });
+
+    // Submit Settings
+    socket.on("saveSettings", (settings) => {
+        gameManager.saveSettings(socket.userID, settings);
     });
 
     // Fetch the room state

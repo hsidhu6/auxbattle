@@ -1,15 +1,14 @@
 [
     {
-        "package": "Default",
+        "package": "DEFAULT",
         "prompts": [
             "Play a song that didn't age well",
             "Play a song about your current relationship status",
-            "Play a song to start off the roaad trip",
+            "Play a song to start off the road trip",
             "Play a song everyone will know all the words too",
             "Play a song by the #1 artist the year you were born",
             "Play a song to start your gym workout",
             "Play a song when it's a friday night and you're with the homies/the girls"
-       
 
         ]
     }

@@ -6,6 +6,7 @@
  * @author Harjyot Sidhu, Pirjot Atwal
  */
 
+const fs = require('fs');
 
 /**
  * The GameManager keeps track of a list of rooms
@@ -21,7 +22,7 @@
  * 
  */
  class GameManager {
-    constructor(displayFunc) {
+    constructor() {
         this.rooms = [];
     }
 
@@ -91,6 +92,34 @@
     }
 
     /**
+     * 
+     * @param {*} socketID 
+     * @param {*} promptName 
+     * @returns 
+     */
+    savePrompt(socketID, promptName) {
+        let room = this.getRoom(socketID);
+        if (room == null) {
+            return {success: false, message: "USER DOES NOT BELONG TO ANY ROOM"};
+        }
+        return room.setSettings(null, promptName);
+    }
+
+    /**
+     * 
+     * @param {*} socketID 
+     * @param {*} settings 
+     * @returns 
+     */
+    saveSettings(socketID, settings) {
+        let room = this.getRoom(socketID);
+        if (room == null) {
+            return {success: false, message: "USER DOES NOT BELONG TO ANY ROOM"};
+        }
+        return room.setSettings(settings);
+    }
+
+    /**
      * Start the game in a room.
      * @param {*} socketID 
      */
@@ -129,7 +158,7 @@
      * Return the room that this socket is in, return null if the
      * person is not in any room.
      * @param {*} socketID 
-     * @returns 
+     * @returns {Room}
      */
     getRoom(socketID) {
         let playerRoom = null;
@@ -301,7 +330,7 @@ class Bracket {
         }
 
         // Clear the array, replace it
-        array.splice(0, array.length)
+        array.splice(0, array.length);
         for (let pair of pairs) {
             array.push(pair);
         }
@@ -366,28 +395,33 @@ class Room {
         console.log("NEW ROOM", password)
         this.host = new Player (username, socketID);
         this.password = password;
+
+        // Load Settings
         this.settings = {
             maxPlayers: 32,
-            promptsToPlay: [], //to be implemented 
             clipDuration: 30,
             dcTime: 60,
             voteTime: 30,
-            roundTime: 30,
+            roundTime: 120,
             messageTime: 7,
-            resultsTime: 20
+            resultsTime: 30
         }
         this.players = [this.host];
-        this.possibleStates = ["setting", "playing", "message", "voting", "result", "ending"];
-        
+
+        this.prompts = JSON.parse(fs.readFileSync("prompts.json"));
+        this.packageName = "DEFAULT";
+        this.package = this.prompts.filter((pac) => pac.package == this.packageName)[0].prompts.map((prompt) => prompt);
         // GAME VARS
         this.bracket = null;
         this.resetRoom();
     }
 
     resetRoom() {
+        // this.possibleStates = ["setting", "playing", "message", "voting", "result", "ending"];
         this.roundStatus = {
             state: "setting",
             bracketLevel: null,
+            prompt: null,
 
             timer: null,
             maxRounds: null,
@@ -409,6 +443,7 @@ class Room {
             }
         };
         this.disconnected = null;
+        this.setSettings(null, this.packageName);
     }
 
     /**
@@ -418,6 +453,23 @@ class Room {
      */
     addPlayer(username, socketID) {
         this.players.push(new Player(username, socketID));
+    }
+
+    // PROMPT FETCHING DONE AT socket.js level
+    /**
+     * TODO
+     * @param {*} settings 
+     * @param {*} package 
+     * @returns 
+     */
+    setSettings(settings=null, pack=null) {
+        if (settings) {
+            this.settings = settings;
+        }
+        if (pack) {
+            this.packageName = pack;
+            this.package = this.prompts.filter((pac) => pac.package == this.packageName)[0].prompts.map((prompt) => prompt);
+        }
     }
 
     startGame() {
@@ -482,6 +534,7 @@ class Room {
 
         // CREATE INITIAL MESSAGE
         let message = "ERROR with BRACKET PLAYING PAIRS";
+        thisRoom.roundStatus.prompt = "BYE ROUND, NO PROMPT PROVIDED";
         if (thisRoom.roundStatus.currentlyPlaying.length == 1) {
             message = "This is a bye round for " + thisRoom.roundStatus.currentlyPlaying[0].username + ". Forwarding round.....";
             // SKIP ROUND LOGIC
@@ -499,6 +552,12 @@ class Room {
             return;
         } else if (thisRoom.roundStatus.currentlyPlaying.length == 2) {
             message = "This round's matchup will be " + thisRoom.roundStatus.currentlyPlaying[0].username + " vs. " + thisRoom.roundStatus.currentlyPlaying[1].username;
+            if (thisRoom.package.length == 0) { // Ran out of prompts
+                thisRoom.setSettings(null, thisRoom.packageName);
+            }
+            // Serve next prompt randomly and cut from list
+            shuffleArray(thisRoom.package);
+            thisRoom.roundStatus.prompt = thisRoom.package.splice(0, 1)[0];
         }
         
         /**
@@ -562,6 +621,7 @@ class Room {
             }  else {
                 // Two videos to review, start voting screen
                 // Change the state to the voting process
+                
                 thisRoom.roundStatus.state = "voting";
                 thisRoom.roundStatus.timer.setTime(thisRoom.settings.voteTime);
                 thisRoom.roundStatus.timer.addToQueue(() => {
@@ -580,6 +640,19 @@ class Room {
             // CHECK THE VOTES, DECLARE THE WINNER
             let player1 = thisRoom.roundStatus.currentlyPlaying[0];
             let player2 = thisRoom.roundStatus.currentlyPlaying[1];
+            
+            // Set videoName
+            player1.videoName = null;
+            player2.videoName = null;
+            for (let video of thisRoom.roundStatus.submittedVideos) {
+                if (video.socketID == player1.socketID) {
+                    player1.videoName = video.video.name;
+                } else if (video.socketID == player2.socketID) {
+                    player2.videoName = video.video.name;
+                }
+            }
+
+            // Calculate count1
             let count1 = 0;
             let count2 = 0;
             if (thisRoom.roundStatus.votes != null) {
@@ -591,6 +664,7 @@ class Room {
                     }
                 }
             }
+
             // IF VOTES EQUAL > DISPLAY MESSAGE FOR RANDOM WINNER
             let winner = null;
             if (count1 > count2) {
@@ -600,26 +674,23 @@ class Room {
             } else {
                 winner = player2;
             }
+            let tie = false;
             if (winner == "tie") { // RANDOMLY DETERMINE WINNER
                 Math.floor(Math.random() * 2) == 0 ? winner = player1 : winner = player2;
-                thisRoom.roundStatus.results = {
-                    tie: true,
-                    winner: {username: winner.username},
-                    loser: {username: (winner == player1 ? player2 : player1).username}
-                }
-                thisRoom.bracket.playNextMatchup(thisRoom.roundStatus.bracketLevel, thisRoom.roundStatus.currentlyPlaying, winner);
-            } else {
-                thisRoom.bracket.playNextMatchup(thisRoom.roundStatus.bracketLevel, thisRoom.roundStatus.currentlyPlaying, winner);
-                thisRoom.roundStatus.results = {
-                    tie: false,
-                    winner: {
-                        username: winner.username,
-                        votes: winner == player1 ? count1 : count2
-                    },
-                    loser: {
-                        username: (winner == player1 ? player2 : player1).username,
-                        votes: winner == player1 ? count2 : count1
-                    }
+                tie = true;
+            }
+            thisRoom.bracket.playNextMatchup(thisRoom.roundStatus.bracketLevel, thisRoom.roundStatus.currentlyPlaying, winner);
+            thisRoom.roundStatus.results = { // RESULTS
+                tie,
+                winner: {
+                    username: winner.username,
+                    videoName: winner.videoName,
+                    voteCount: winner == player1 ? count1 : count2
+                },
+                loser: {
+                    username: (winner == player1 ? player2 : player1).username,
+                    videoName: (winner == player1 ? player2 : player1).videoName,
+                    voteCount: winner == player1 ? count2 : count1
                 }
             }
             
@@ -635,11 +706,25 @@ class Room {
 
         function restartLogic() {
             console.log("RESTARTING LOOP...")
-            
+            // Manual Clear to avoid vote glitch
+            thisRoom.roundStatus.votes = [];
+            thisRoom.roundStatus.submittedVideos = [];
+            thisRoom.roundStatus.results = {};
+            thisRoom.roundStatus.timer.stopTime();
+            thisRoom.roundStatus.timer.clearQueue();
+            thisRoom.roundStatus.timer.clearQueue0();
+
             if (thisRoom.bracket.winner != null) {
                 console.log("WINNER FOUND!", thisRoom.bracket.winner.username);
                 // PRESENT WINNER SCREEN IN MESSAGE
-                thisRoom.resetRoom();
+                let message = "The winner is " + thisRoom.bracket.winner.username + ".";
+                thisRoom.displayMessage("GAME OVER!", message, thisRoom.settings.messageTime);
+                thisRoom.roundStatus.timer.setTime(thisRoom.settings.messageTime);
+                thisRoom.roundStatus.timer.addToQueue(() => {
+                    thisRoom.displayMessage("GAME OVER!", message, thisRoom.roundStatus.timer.time);
+                });
+                thisRoom.roundStatus.timer.addToQueue0(() => thisRoom.resetRoom());
+                thisRoom.roundStatus.timer.startTime();
             } else if (thisRoom.roundStatus.state == "ending" || thisRoom.roundStatus.state == "exiting") {
                 // END THE GAME, RESET THE STATE TO SETTING
                 thisRoom.resetRoom();
@@ -672,7 +757,6 @@ class Room {
      * On the event of a host disconnect, close the room after an allotted time,
      * else have the host rejoin.
      */
-
     disconnect(socketID, manager) {
         function genMessage(room) {
             let message = "The following people are disconnected: ";
@@ -703,7 +787,7 @@ class Room {
             return; // The game has not started yet
         }
         if (this.disconnected.length == 0) { // This is the first person that disconnected
-            console.log("DISCONNECT STATE STORE")
+            // 1. Store the disconnect state to be restored by the reconnect function
             this.savedState = this.roundStatus.state;
             this.savedTime = this.roundStatus.timer.time;
             this.timerQueue = this.roundStatus.timer.queueFunc;
@@ -713,6 +797,7 @@ class Room {
             this.roundStatus.timer.stopTime(); // Save the state and clear the timer (to be used by reconnect function)
             this.disconnected.push(socketID);
             
+            // 2. Display the disconnect notice to the users
             this.displayMessage("Disconnect Notice", genMessage(this), this.settings.dcTime);
             this.roundStatus.timer.setTime(this.settings.dcTime);
             this.roundStatus.timer.addToQueue(() => {
@@ -905,6 +990,7 @@ class Room {
         status.settings = this.settings;
         status.videos = [];
         status.results = null;
+        status.prompt = this.roundStatus.prompt;
         
         /**
          * Player Specific Display, does not override room rules (which are global).
@@ -928,7 +1014,6 @@ class Room {
 
         // Append stripped votes for results
         status.results = this.roundStatus.results;
-
         return status;
     }
 }
