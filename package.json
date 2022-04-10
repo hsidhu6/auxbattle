@@ -4,7 +4,8 @@
   "description": "An online rendition of the popular AuxBattle game, built by a few college friends for fun.",
   "main": "app.js",
   "scripts": {
-    "test": "node app.js"
+    "test": "node app.js",
+    "start": "node app.js"
   },
   "repository": {
     "type": "git",
