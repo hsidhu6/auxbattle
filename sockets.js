@@ -85,13 +85,18 @@ function setupSocket(socket) {
     });
 
     // Submit a video to the room.
-    socket.on('submitVideo', (video) => {
-        gameManager.submitVideo(socket.userID, video);
+    socket.on('submitVideo', (video, callback) => {
+        callback(gameManager.submitVideo(socket.userID, video));
     });
 
     // Submit a vote to the room.
-    socket.on('submitVote', (vote) => {
-        gameManager.submitVote(socket.userID, vote);
+    socket.on('submitVote', (vote, callback) => {
+        callback(gameManager.submitVote(socket.userID, vote));
+    });
+
+    // Lock In
+    socket.on('lockIn', (callback) => {
+        callback(gameManager.lockIn(socket.userID));
     });
 }
 

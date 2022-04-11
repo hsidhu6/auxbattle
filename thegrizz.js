@@ -203,6 +203,20 @@ const fs = require('fs');
     }
 
     /**
+     * 
+     * @param {*} socketID 
+     * @returns 
+     */
+    lockIn(socketID) {
+        let room = this.getRoom(socketID);
+        if (room == null) {
+            return {success: false, message: "ROOM DOES NOT EXIST."};
+        }
+        // Submit Vote
+        return room.lockIn(socketID);
+    }
+
+    /**
      * Check if a given username has not been used yet. (not case sensitive)
      * @param {String} username
      * @returns true if unique, false otherwise.
@@ -395,13 +409,14 @@ class Room {
         console.log("NEW ROOM", password)
         this.host = new Player (username, socketID);
         this.password = password;
+        this.lockedIn = [];
 
         // Load Settings
         this.settings = {
             maxPlayers: 32,
             clipDuration: 30,
             dcTime: 60,
-            voteTime: 30,
+            voteTime: 90,
             roundTime: 120,
             messageTime: 7,
             resultsTime: 30
@@ -523,6 +538,17 @@ class Room {
     }
 
     /**
+     * TODO
+     */
+    lockIn(socketID) {
+        if (!this.lockedIn.includes(socketID)) {
+            this.lockedIn.push(socketID);
+            return {success: true, message: "YOU WERE LOCKED IN SUCCESSFULLY"};
+        }
+        return {success: true, message: "YOU ARE ALREADY LOCKED IN"};
+    }
+
+    /**
      * By utilizing timers, start the gameplay loop (essentially keeping track of the state at all times.)
      */
     mainGameplayLoop() {
@@ -566,12 +592,17 @@ class Room {
         function showSubmit() {
             thisRoom.hideMessage();
             console.log("WAITING FOR SUBMISSIONS");
+            thisRoom.lockedIn = [];
             
             // Change the state to the video selection screen
             thisRoom.roundStatus.state = "playing";
             thisRoom.roundStatus.timer.setTime(thisRoom.settings.roundTime);
             thisRoom.roundStatus.timer.addToQueue(() => {
                 thisRoom.roundStatus.time = thisRoom.roundStatus.timer.time;
+                // LOCK IN FEATURE
+                if (thisRoom.lockedIn && thisRoom.lockedIn.length == 2) {
+                    thisRoom.roundStatus.timer.setTime(1);
+                }
             });
             thisRoom.roundStatus.timer.addToQueue0(showVoting);
             thisRoom.roundStatus.timer.startTime();
@@ -621,11 +652,15 @@ class Room {
             }  else {
                 // Two videos to review, start voting screen
                 // Change the state to the voting process
-                
+                thisRoom.lockedIn = [];
                 thisRoom.roundStatus.state = "voting";
                 thisRoom.roundStatus.timer.setTime(thisRoom.settings.voteTime);
                 thisRoom.roundStatus.timer.addToQueue(() => {
                     thisRoom.roundStatus.time = thisRoom.roundStatus.timer.time;
+                    // LOCK IN FEATURE
+                    if (thisRoom.lockedIn && thisRoom.lockedIn.length == thisRoom.roundStatus.voting.length) {
+                        thisRoom.roundStatus.timer.setTime(1);
+                    }
                 });
                 thisRoom.roundStatus.timer.addToQueue0(showResults);
                 thisRoom.roundStatus.timer.startTime();
@@ -880,7 +915,7 @@ class Room {
             for (let i = 0; i < this.roundStatus.submittedVideos.length; i++) {
                 if (this.roundStatus.submittedVideos[i].socketID == socketID) {
                     this.roundStatus.submittedVideos[i].video = video;
-                    return;
+                    return {success: true, message: "YOUR VIDEO WAS REPLACED"};
                 }
             }
         }
@@ -899,6 +934,7 @@ class Room {
             username: player.username,
             video
         });
+        return {success: true, message: "YOUR VIDEO WAS SUBMITTED"};
     }
 
     /**
@@ -933,7 +969,7 @@ class Room {
             for (let i = 0; i < this.roundStatus.votes.length; i++) {
                 if (this.roundStatus.votes[i].socketID == socketID) {
                     this.roundStatus.votes[i].vote = makeVote(videoID);
-                    return;
+                    return {success: true, message: "YOUR VOTE WAS REPLACED"};
                 }
             }
         }
@@ -943,6 +979,7 @@ class Room {
             socketID,
             vote: makeVote(videoID)
         });
+        return {success: true, message: "YOUR VOTE WAS SUCCESSFULLY SUBMITTED."};
     }
 
     /**

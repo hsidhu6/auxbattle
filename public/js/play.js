@@ -270,6 +270,17 @@ function eventHandle() {
         socket.emit("saveSettings", settings);
     });
 
+    // If the client locks in, lock in on backend
+    for (let elem of document.getElementsByClassName("lockIn")) {
+        elem.addEventListener("click", (evt) => {
+            socket.emit("lockIn", (response) => {
+                if (response.success) {
+                    alert(response.message);
+                }
+            });
+        });
+    }
+
     // If the client searches a song, display the songs for selection
     let timer = null;
     document.getElementById("song-input").addEventListener("input", (evt) => {
@@ -461,7 +472,11 @@ function displayVotes(videos, clipDuration) {
         let voteButton = quickCreate("button", null, "Vote");
         // Attach script
         voteButton.addEventListener("click", (evt) => {
-            socket.emit("submitVote", video.videoID);
+            socket.emit("submitVote", video.videoID, (response) => {
+                if (response.success) {
+                    alert(response.message);
+                }
+            });
         });
 
         voteDiv.append(playButton, title, author, voteButton);
@@ -524,8 +539,15 @@ function displayClipModal(video, clipDuration=30) {
     // Button Scripts
     document.getElementById("clip-video-submit").onclick = (evt) => {
         video.startingPosition = slider.value;
-        socket.emit("submitVideo", video);
+        socket.emit("submitVideo", video, (response) => {
+            if (response.success == true) {
+                alert(response.message);
+            }
+        });
         document.getElementById("clip-video-modal").style.display = "none";
+        if (player) {
+            player.stopVideo();
+        }
     };
     document.getElementById("clip-video-cancel").onclick = (evt) => {
         document.getElementById("clip-video-modal").style.display = "none";
