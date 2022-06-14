@@ -72,10 +72,7 @@
         flex-flow: row nowrap;
         ">
             <div style="
-                height: 500px;
                 width: 30%;
-
-                border-right: 1px solid white;
 
                 display: flex;
                 flex-flow: column nowrap;
@@ -84,37 +81,82 @@
                 grid-gap: 100px;
                 padding: 30px 0px;
             ">
-                <button style="border-radius: 25%; border: 2px solid white; background-color: transparent; color: white; font-size: 2em; padding: 10px">
+                <a href="#about"><button style="border-radius: 25%; border: 2px solid white; background-color: transparent; color: white; font-size: 2em; padding: 10px">
                     About
-                </button>
-                <button style="border-radius: 25%; border: 2px solid white; background-color: transparent; color: white; font-size: 2em; padding: 10px">
+                </button></a>
+                <a href="#team"><button style="border-radius: 25%; border: 2px solid white; background-color: transparent; color: white; font-size: 2em; padding: 10px">
                     Team
-                </button>
+                </button></a>
             </div>
 
             <div style="
-            height: 500px;
             width: 70%;
 
             display: flex;
             flex-flow: column nowrap;
             justify-content: flex-start;
-            align-items: left;
             padding: 30px 40px;
+            border-left: 1px solid white;
             ">
-                <h1 style="color: white; text-decoration: underline; margin-bottom: 5px">About</h1>
-                <h3 style="color:white">Aux Battle, a game commonly played with no proper platform or rules. A game in which friends & family can battle and see who has the better music taste while being given certain prompts to answer. Using nodeapp.js we were able to create this website which will make your playing easy and simple with pre-made prompts and bracket! Playing this game is a great way to bring the competitive spirt and have a good time.
+                <a id="about">
+                <h1 style="color: white; text-decoration: underline; margin-bottom: 5px">About</h1></a>
+                <h3 style="color:white">Aux Battle, a game commonly played with no proper platform or rules. A game in which friends & family can battle and see who has the better music taste while being given certain prompts to answer. Using the Node.js Framework we were able to create this website which will make your playing easy and simple with pre-made prompts and bracket! Playing this game is a great way to bring the competitive spirt and have a good time.
                 </h3>
                 <br><br>
 
-                <h1 style="color: white; text-decoration: underline; margin-bottom: 5px">Team</h1>
-                <h3 style="color:white">Lorem Ipsum</h3>
+                <a id="team"></a>
+                <h1 style="color: white; text-decoration: underline; margin-bottom: 5px">Team</h1><br><br>
+                <div style="
+                width:100%;
+                
+                display: flex;
+                flex-flow: row nowrap;
+                justify-content: space-evenly;
+                margin-bottom: 50px;
+                padding-bottom: 30px;
+                border-bottom: 2px solid white;
+                ">
+                    <div style="display:flex;flex-flow:column nowrap;align-items: center;">
+                        <img style="height:200px" src="hark.png">
+                        <h2 style="color:white">Harkamal Padda</h2>
+                    </div>
+                    <h3 style="color:white; width: 70%">Hi, I'm Harkamal Padda, a Managerial Economics Major and Computer Science Minor studying at UC Davis. I worked as the creative director on this project and provided guidelines on the visual direction of AuxBattle's mechanics.</h3>
+
+                </div>
+                <div style="
+                width:100%;
+                
+                display: flex;
+                flex-flow: row nowrap;
+                justify-content: space-evenly;
+                padding-bottom: 30px;
+                margin-bottom: 50px;
+                border-bottom: 2px solid white;
+                ">
+                    <h3 style="color:white; width: 70%">Hi, I'm Harjyot Sidhu, a Data Science Major studying at UC Riverside. I was a backend and frontend developer for AuxBattle and helped design the backend data management system for the game.</h3>
+                    <div style="display:flex;flex-flow:column nowrap;align-items: center;">
+                        <img style="height:200px" src="harjyot.png">
+                        <h2 style="color:white">Harjyot Sidhu</h2>
+                    </div>
+                </div>
+                <div style="
+                width:100%;
+                
+                display: flex;
+                flex-flow: row nowrap;
+                justify-content: space-evenly;
+                margin-bottom: 100px;
+                padding-bottom: 30px;
+                border-bottom: 2px solid white;
+                ">
+                    <div style="display:flex;flex-flow:column nowrap;align-items: center;">
+                        <img style="height:200px" src="lavi.png">
+                        <h2 style="color:white">Pirjot Atwal</h2>
+                    </div>
+                    <h3 style="color:white; width: 70%">Hi, I'm Pirjot Atwal, a Computer Science Major at UCLA! I was the lead developer of AuxBattle for both frontend and backend. The idea of creating an AuxBattle Game was born from a discussion I had with a few friends of mine, and I'm glad to see the project through! Check out my Github <a target="_blank" href="https://www.github.com/Pirjot">here</a>!</h3>
+
+                </div>
             </div>
         </div>
-
-
-
-
-
     </body>
 </html>
