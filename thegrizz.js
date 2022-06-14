@@ -55,6 +55,9 @@ const fs = require('fs');
                 break;
             }
         }
+        if (room.players.length == room.settings.maxPlayers) {
+            return {success: false, message: "The room already has the maximum number of players."};
+        }
         if (room.password == password) {
             room.addPlayer(username, socketID);
             return room.settings;
@@ -416,13 +419,13 @@ class Room {
 
         // Load Settings
         this.settings = {
-            maxPlayers: 32,
+            maxPlayers: 10,
             clipDuration: 30,
             dcTime: 60,
             voteTime: 90,
             roundTime: 120,
             messageTime: 7,
-            resultsTime: 30
+            resultsTime: 20
         }
         this.players = [this.host];
 

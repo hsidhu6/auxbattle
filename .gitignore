@@ -4,3 +4,4 @@
 # Require the user to import their own modules using 'npm install'
 node_modules
 SampleCode/node_modules
+.DS_STORE
