@@ -1,0 +1,8 @@
+1. Fetch settings update if not being edited,, Update Clip Duration Value for Clip Modal
+2. Kick Ban Buttons, Only If Host, Cant do to Host
+3. End Game Button, Close Room Button.
+4. Check Disconnect => Views show up correctly (Specifically Message Screen)
+5. Bracket Alg
+6. Main Page Look
+7. Update GUI with Grizz
+8. Send out

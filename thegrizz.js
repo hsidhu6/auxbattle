@@ -116,6 +116,9 @@ const fs = require('fs');
         if (room == null) {
             return {success: false, message: "USER DOES NOT BELONG TO ANY ROOM"};
         }
+        if (room.host.socketID != socketID) {
+            return {success: false, message: "YOU ARE NOT HOST."};
+        }
         return room.setSettings(settings);
     }
 

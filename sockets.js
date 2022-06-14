@@ -50,8 +50,8 @@ function setupSocket(socket) {
     });
 
     // Submit Settings
-    socket.on("saveSettings", (settings) => {
-        gameManager.saveSettings(socket.userID, settings);
+    socket.on("saveSettings", (settings, callback) => {
+        callback(gameManager.saveSettings(socket.userID, settings));
     });
 
     // Fetch the room state

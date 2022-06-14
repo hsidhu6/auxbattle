@@ -17,6 +17,10 @@ const app = express(); // Build the app
 app.use(express.static('public')); // By default, serve static files from the public folder
 app.use(express.json()); // Allow JSON GET/POST requests
 
+// SERVE FAVICON TO USER
+const favicon = require('serve-favicon');
+const path = require('path');
+app.use(favicon(path.join(__dirname, 'public', 'favicon', 'favicon.ico')));
 
 // Listen on port 3000 (localhost:3000)
 let server = app.listen(process.env.PORT || 3000, () => {

@@ -71,7 +71,7 @@ async function initGAPI() {
 /**
  * Searches Youtube for a query, auto initializes.
  * @param {*} query 
- * @returns 
+ * @returns The results of the search in an array
  */
 async function searchYoutube(query) {
     if (gapi.client.youtube == undefined) {
@@ -127,7 +127,6 @@ async function searchYoutube(query) {
 
 
 // SOCKETS (PARTICULAR)
-// TODO: UNEXPOSE FROM CLIENT
 const socket = io();
 let socketID = localStorage.getItem('socketID');
 
@@ -267,7 +266,12 @@ function eventHandle() {
             settings[id] = value;
         }
 
-        socket.emit("saveSettings", settings);
+        // Try to save the settings, if this player wasn't the host, then don't.
+        socket.emit("saveSettings", settings, (response) => {
+            if (!response.success) {
+                alert(response.message);
+            }
+        });
     });
 
     // If the client locks in, lock in on backend
@@ -702,6 +706,9 @@ function updateRoomState() {
         } else if (response.state == "setting") {
             // Revert back to settings
             robustDisplay(["menu2"]);
+        } else if (response.state == "message") {
+            // Display the message box
+            document.getElementById("pause-modal").style.display = "flex";
         }
 
         lastState = response.state;

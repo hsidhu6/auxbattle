@@ -1,0 +1,71 @@
+<div style="height: 400px; max-width: 100%; background-color: blue;">
+            <!-- Sticky Links -->
+            <div style="height: 100px; padding-right: 100px; background-color: green; display: flex; flex-flow: row nowrap; justify-content: space-between; align-items: center;">
+                <div style="height: 70px; width: 140px">
+                    <h1 style="margin-left: 50px">Logo</h1>
+                </div>
+                <div style="height: 70px; width:300px; display:flex; align-items:center"> <!-- Links -->
+                    <div>
+                        <button class="dropbtn" onclick="showDrop('drop1')">Dropdown
+                            <i class="fa fa-caret-down"></i>
+                        </button>
+                        <div class="dropdown-content" id="drop1">
+                            <a href="#">Link 1</a>
+                            <a href="#">Link 2</a>
+                            <a href="#">Link 3</a>
+                        </div>
+                    </div>
+                    <div>
+                        <button class="dropbtn" onclick="showDrop('drop2')">Dropdown
+                            <i class="fa fa-caret-down"></i>
+                          </button>
+                        <div class="dropdown-content" id="drop2">
+                            <a href="#">Link 1</a>
+                            <a href="#">Link 2</a>
+                            <a href="#">Link 3</a>
+                        </div>
+                    </div>
+                    <div>
+                        <button class="dropbtn" onclick="showDrop('drop3')">Dropdown
+                            <i class="fa fa-caret-down"></i>
+                          </button>
+                        <div class="dropdown-content" id="drop3">
+                            <a href="#">Link 1</a>
+                            <a href="#">Link 2</a>
+                            <a href="#">Link 3</a>
+                        </div>
+                    </div>
+                </div>
+                <script> // Dropdown script
+                    function showDrop(id) {
+                        document.getElementById(id).classList.toggle("show");
+
+                        // Close the dropdown if the user clicks outside of it
+                        setTimeout(() => {
+                            let savedID = id;
+                            window.onclick = function(e) {
+                            if (document.getElementById(savedID).parentNode.children[0] != e.target) {
+                                for (let i of ["drop1", "drop2", "drop3"]) {
+                                    if (i != savedID) {
+                                        let myDropdown = document.getElementById(savedID);
+                                        if (myDropdown.classList.contains('show')) {
+                                            myDropdown.classList.remove('show');
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        }, 50);
+                    }
+                </script>
+            </div>
+
+            <!-- Rest of content in Hero -->
+            <div style="margin: 100px 0px; display:flex; flex-direction: column; flex-wrap: nowrap; align-items:center;">
+                <h1 style="text-align:center">
+                    TITLE
+                </h1>
+                <a href="play.html"><button>Play</button></a>
+            </div>
+            
+        </div>
