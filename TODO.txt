@@ -1,4 +1,4 @@
-1. Fetch settings update if not being edited,, Update Clip Duration Value for Clip Modal
+1. Fetch settings update if not being edited,, Update Clip Duration Value for Clip Modal //
 2. Kick Ban Buttons, Only If Host, Cant do to Host
 3. End Game Button, Close Room Button.
 4. Check Disconnect => Views show up correctly (Specifically Message Screen)

@@ -268,9 +268,7 @@ function eventHandle() {
 
         // Try to save the settings, if this player wasn't the host, then don't.
         socket.emit("saveSettings", settings, (response) => {
-            if (!response.success) {
-                alert(response.message);
-            }
+            alert(response.message);
         });
     });
 

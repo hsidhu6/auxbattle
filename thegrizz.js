@@ -488,6 +488,7 @@ class Room {
             this.packageName = pack;
             this.package = this.prompts.filter((pac) => pac.package == this.packageName)[0].prompts.map((prompt) => prompt);
         }
+        return {success:true, message:"Your settings have been saved!"}
     }
 
     startGame() {
