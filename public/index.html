@@ -6,32 +6,33 @@
  -->
 <!DOCTYPE html>
 <html>
-    <head>
-        <title>AuxBattle</title>
-        <link rel="stylesheet" href="css/global.css" >
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    
-        <!-- Favicon -->
-        <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png?v=2">
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png?v=2">
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png?v=2">
-        <link rel="manifest" href="/favicon/site.webmanifest?v=2">
-        <link rel="mask-icon" href="/favicon/safari-pinned-tab.svg?v=2" color="#5bbad5">
-        <link rel="shortcut icon" href="/favicon/favicon.ico?v=2">
-        <meta name="msapplication-TileColor" content="#da532c">
-        <meta name="msapplication-config" content="/favicon/browserconfig.xml?v=2">
-        <meta name="theme-color" content="#ffffff">
 
-        <!-- Lobster Two Font -->
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Lobster+Two&display=swap" rel="stylesheet">
-    
-    </head>
+<head>
+    <title>AuxBattle</title>
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 
-    <body style="margin: 0px; background-color: black;">
-        <!-- Header -->
-        <div style="
+    <!-- Favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png?v=2">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png?v=2">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png?v=2">
+    <link rel="manifest" href="/favicon/site.webmanifest?v=2">
+    <link rel="mask-icon" href="/favicon/safari-pinned-tab.svg?v=2" color="#5bbad5">
+    <link rel="shortcut icon" href="/favicon/favicon.ico?v=2">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="msapplication-config" content="/favicon/browserconfig.xml?v=2">
+    <meta name="theme-color" content="#ffffff">
+
+    <!-- Lobster Two Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lobster+Two&display=swap" rel="stylesheet">
+
+</head>
+
+<body style="margin: 0px; background-color: black;">
+    <!-- Header -->
+    <div style="
         height: 400px; 
         width: 100%; 
         background-image: linear-gradient(to bottom right, pink , purple);
@@ -41,8 +42,8 @@
         grid-gap: 50px;
         justify-content:center;
         align-items: center;">
-            <img src="auxbattlelogo_trans.png" style="height: 400px">
-            <div style="
+        <img src="auxbattlelogo_trans.png" style="height: 400px">
+        <div style="
                 height: 400px;
 
                 display:flex;
@@ -50,28 +51,26 @@
                 justify-content: center;
                 align-items: center;
             ">
-                <h1 style="text-align:center; margin:0; font-size: 4em; font-family:'Lobster Two'">Welcome To<br>AuxBattle!</h1>
-                <hr style="width:100%; border: 1px solid black">
-                <a href="play.html"><button style="
+            <h1 style="text-align:center; margin:0; font-size: 4em; font-family:'Lobster Two'">Welcome To<br>AuxBattle!
+            </h1>
+            <hr style="width:100%; border: 1px solid black">
+            <a href="play.html"><button style="
                 font-size:1.5em; 
                 padding: 5px 10px; 
                 color: pink; 
                 background-color: black; 
                 border-radius:25%;
                 font-family:'Lobster Two'
-                "
-                onMouseOver="this.style.color='white';"
-                onMouseOut="this.style.color='pink';"
-                >Play</button></a>
-            </div>
+                " onMouseOver="this.style.color='white';" onMouseOut="this.style.color='pink';">Play</button></a>
         </div>
-        <!-- End Header -->
+    </div>
+    <!-- End Header -->
 
-        <div style="
+    <div style="
         display: flex;
         flex-flow: row nowrap;
         ">
-            <div style="
+        <div style="
                 width: 30%;
 
                 display: flex;
@@ -81,15 +80,17 @@
                 grid-gap: 100px;
                 padding: 30px 0px;
             ">
-                <a href="#about"><button style="border-radius: 25%; border: 2px solid white; background-color: transparent; color: white; font-size: 2em; padding: 10px">
+            <a href="#about"><button
+                    style="border-radius: 25%; border: 2px solid white; background-color: transparent; color: white; font-size: 2em; padding: 10px">
                     About
                 </button></a>
-                <a href="#team"><button style="border-radius: 25%; border: 2px solid white; background-color: transparent; color: white; font-size: 2em; padding: 10px">
+            <a href="#team"><button
+                    style="border-radius: 25%; border: 2px solid white; background-color: transparent; color: white; font-size: 2em; padding: 10px">
                     Team
                 </button></a>
-            </div>
+        </div>
 
-            <div style="
+        <div style="
             width: 70%;
 
             display: flex;
@@ -98,48 +99,24 @@
             padding: 30px 40px;
             border-left: 1px solid white;
             ">
-                <a id="about">
-                <h1 style="color: white; text-decoration: underline; margin-bottom: 5px">About</h1></a>
-                <h3 style="color:white">Aux Battle, a game commonly played with no proper platform or rules. A game in which friends & family can battle and see who has the better music taste while being given certain prompts to answer. Using the Node.js Framework we were able to create this website which will make your playing easy and simple with pre-made prompts and bracket! Playing this game is a great way to bring the competitive spirt and have a good time.
-                </h3>
-                <br><br>
+            <a id="about">
+                <h1 style="color: white; text-decoration: underline; margin-bottom: 5px">About</h1>
+            </a>
+            <h3 style="color:white">
+                <span style="color: red; font-size: 1.5em;">NOTE: AuxBattle only works on Desktop Devices for listening to audio (You can still play on mobile, you will likely not hear any audio though) because of 
+                our dependence on the Youtube IFrame API that blocks copyright videos. We will be looking into solutions with youtube-dl in the future but for now we recommend only playing
+                on a computer or laptop. Sorry for the inconvenience!</span><br><br>
+                Aux Battle, a game commonly played with no proper platform or rules. A game in which
+                friends & family can battle and see who has the better music taste while being given certain prompts to
+                answer. Using the Node.js Framework we were able to create this website which will make your playing
+                easy and simple with pre-made prompts and bracket! Playing this game is a great way to bring the
+                competitive spirt and have a good time.
+            </h3>
+            <br><br>
 
-                <a id="team"></a>
-                <h1 style="color: white; text-decoration: underline; margin-bottom: 5px">Team</h1><br><br>
-                <div style="
-                width:100%;
-                
-                display: flex;
-                flex-flow: row nowrap;
-                justify-content: space-evenly;
-                margin-bottom: 50px;
-                padding-bottom: 30px;
-                border-bottom: 2px solid white;
-                ">
-                    <div style="display:flex;flex-flow:column nowrap;align-items: center;">
-                        <img style="height:200px" src="hark.png">
-                        <h2 style="color:white">Harkamal Padda</h2>
-                    </div>
-                    <h3 style="color:white; width: 70%">Hi, I'm Harkamal Padda, a Managerial Economics Major and Computer Science Minor studying at UC Davis. I worked as the creative director on this project and provided guidelines on the visual direction of AuxBattle's mechanics.</h3>
-
-                </div>
-                <div style="
-                width:100%;
-                
-                display: flex;
-                flex-flow: row nowrap;
-                justify-content: space-evenly;
-                padding-bottom: 30px;
-                margin-bottom: 50px;
-                border-bottom: 2px solid white;
-                ">
-                    <h3 style="color:white; width: 70%">Hi, I'm Harjyot Sidhu, a Data Science Major studying at UC Riverside. I was a backend and frontend developer for AuxBattle and helped design the backend data management system for the game.</h3>
-                    <div style="display:flex;flex-flow:column nowrap;align-items: center;">
-                        <img style="height:200px" src="harjyot.png">
-                        <h2 style="color:white">Harjyot Sidhu</h2>
-                    </div>
-                </div>
-                <div style="
+            <a id="team"></a>
+            <h1 style="color: white; text-decoration: underline; margin-bottom: 5px">Team</h1><br><br>
+            <div style="
                 width:100%;
                 
                 display: flex;
@@ -149,14 +126,62 @@
                 padding-bottom: 30px;
                 border-bottom: 2px solid white;
                 ">
-                    <div style="display:flex;flex-flow:column nowrap;align-items: center;">
-                        <img style="height:200px" src="lavi.png">
-                        <h2 style="color:white">Pirjot Atwal</h2>
-                    </div>
-                    <h3 style="color:white; width: 70%">Hi, I'm Pirjot Atwal, a Computer Science Major at UCLA. I was the lead developer of AuxBattle for both frontend and backend. The idea of creating an AuxBattle Game was born from a discussion I had with a few friends of mine, and I'm glad to see the project through! Check out my Github <a target="_blank" href="https://www.github.com/Pirjot">here</a>.</h3>
+                <div style="display:flex;flex-flow:column nowrap;align-items: center;">
+                    <img style="height:200px" src="lavi.png">
+                    <h2 style="color:white">Pirjot Atwal</h2>
+                </div>
+                <h3 style="color:white; width: 70%">Hi, I'm Pirjot Atwal, a Computer Science Major at UCLA. I was the
+                    lead developer of AuxBattle for both frontend and backend. The idea of creating an AuxBattle Game
+                    was born from a discussion I had with a few friends of mine, and I'm glad to see the project
+                    through! Check out my Github <a target="_blank" href="https://www.github.com/Pirjot">here</a>.</h3>
 
+            </div>
+
+
+            <div style="
+                width:100%;
+                
+                display: flex;
+                flex-flow: row nowrap;
+                justify-content: space-evenly;
+                padding-bottom: 30px;
+                margin-bottom: 50px;
+                border-bottom: 2px solid white;
+                ">
+                <h3 style="color:white; width: 70%">Hi, I'm Harjyot Sidhu, a Data Science Major studying at UC
+                    Riverside. I was a backend and frontend developer for AuxBattle and helped design the backend data
+                    management system for the game.</h3>
+                <div style="display:flex;flex-flow:column nowrap;align-items: center;">
+                    <img style="height:200px" src="harjyot.png">
+                    <h2 style="color:white">Harjyot Sidhu</h2>
                 </div>
             </div>
+            <div style="
+                width:100%;
+                
+                display: flex;
+                flex-flow: row nowrap;
+                justify-content: space-evenly;
+                margin-bottom: 50px;
+                padding-bottom: 30px;
+                border-bottom: 2px solid white;
+                ">
+                <div style="display:flex;flex-flow:column nowrap;align-items: center;">
+                    <img style="height:200px" src="hark.png">
+                    <h2 style="color:white">Harkamal Padda</h2>
+                </div>
+                <h3 style="color:white; width: 70%">Hi, I'm Harkamal Padda, a Managerial Economics Major and Computer
+                    Science Minor studying at UC Davis. I worked as the creative director on this project and provided
+                    guidelines on the visual direction of AuxBattle's mechanics.</h3>
+
+            </div>
+
+            <div>
+            </div>
+
+
         </div>
-    </body>
+    </div>
+</body>
+
 </html>
