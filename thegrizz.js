@@ -55,10 +55,10 @@ const fs = require('fs');
                 break;
             }
         }
-        if (room.players.length == room.settings.maxPlayers) {
+        if (room != null && room.players.length == room.settings.maxPlayers) {
             return {success: false, message: "The room already has the maximum number of players."};
         }
-        if (room.password == password) {
+        if (room != null && room.password == password) {
             room.addPlayer(username, socketID);
             return room.settings;
         } else {
@@ -875,7 +875,7 @@ class Room {
             this.roundStatus.timer.clearQueue0();
             this.roundStatus.timer.stopTime();
 
-            this.savedState = this.roundStatus.state;
+            this.roundStatus.state = this.savedState;
             this.hideMessage();
             this.roundStatus.timer.setTime(this.savedTime || 30);
             this.roundStatus.timer.queueFunc = this.timerQueue;

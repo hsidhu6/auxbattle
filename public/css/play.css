@@ -44,9 +44,57 @@
     justify-content: space-evenly;
 }
 
+#votestable {
+    display: flex; 
+    width: 100%; 
+    flex-direction: row; 
+    justify-content: space-between; 
+    align-items: center;
+}
+
 .vote {
     display: flex; 
     flex-direction: column; 
     flex-wrap: nowrap; 
     align-items: center;
+    font-size: .75em;
+    width: 50%;
+}
+
+.vote button {
+    border-radius: 10%;
+    padding: 10px; 
+    font-size: 1.25em;
+}
+
+
+/* Prompts Menu IDs */
+
+#videostable button {
+    border-radius: 10%;
+    padding: 10px; 
+    font-size: 1em;
+}
+
+.lockIn {
+    border-radius: 10%;
+    padding: 10px; 
+    font-size: 1em;
+}
+
+.video button {
+    border-radius: 10%; 
+    padding: 10px; 
+    font-size: .75em;
+}
+
+#resultsmessage {
+    font-size: 1.5em;
+}
+
+#resultstable div {
+    width: 50%;
+    height: 300px;
+    overflow-y: auto;
+    text-align: center;
 }

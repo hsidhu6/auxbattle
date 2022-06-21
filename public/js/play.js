@@ -467,7 +467,7 @@ function displayVotes(videos, clipDuration) {
     for (let i = 0; i < 2; i++) {
         let video = videos[rand];
         rand = 1 - rand;
-        let voteDiv = quickCreate("div", {"class": "vote"});
+        let voteDiv = quickCreate("div", {"class": ["vote"]});
         let playButton = createPlayVideoIcon(video.videoID, video.start, video.start + clipDuration);
         let title = quickCreate("h2", null, video.name);
         let author = quickCreate("h2", null, "By " + video.author);
@@ -490,9 +490,7 @@ function displayVotes(videos, clipDuration) {
  * TODO
  * @param {*} results 
  */
-function displayResults(results) {
-    console.log("DISPLAYING RESULTS", results);
-    
+function displayResults(results) {    
     let resultsMessage = document.getElementById("resultsmessage");
     if (results.tie == true) {
         resultsMessage.textContent = "There was a Tie! The winner was randomly decided to be " + results.winner.username + ".";
