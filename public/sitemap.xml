@@ -1,11 +1,11 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-        <loc>https://auxbattle.herokuapp.com/</loc>
+        <loc>https://auxbattle.glitch.me/</loc>
     </url>
     <url>
-        <loc>https://auxbattle.herokuapp.com/index.html</loc>
+        <loc>https://auxbattle.glitch.me/index.html</loc>
     </url>
     <url>
-        <loc>https://auxbattle.herokuapp.com/play.html</loc>
+        <loc>https://auxbattle.glitch.me/play.html</loc>
     </url>
 </urlset>
