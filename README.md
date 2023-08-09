@@ -25,6 +25,8 @@ node app.js
 4. Visit the website at the following URL:
 ```
 http://localhost:3000
+or
+http://auxbattle.glitch.me/
 ```
 
 ## Online Site
